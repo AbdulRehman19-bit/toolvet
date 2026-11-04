@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-11-04
+
+### Added
+- `scan --format json|sarif|markdown|badge` with `--output`; SARIF 2.1.0 for GitHub code scanning. Empty scans still produce a valid report.
+- GitHub Action (`action.yml`): scans, writes SARIF, optionally uploads it, and runs `verify` when `agent.lock` exists. It installs from the tagged action source.
+- README badge (`--format badge`).
+- Documentation site under `docs/` (rules reference, CI guide) for GitHub Pages.
+
+### Fixed
+- `scan` now reads `agent.tools.json`, so tool-description rules (AA006) apply to snapshotted tools. Previously only tools declared inline in a config were checked.
+
 ## [0.1.0] - 2026-11-04
 
 First release.
