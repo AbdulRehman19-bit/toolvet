@@ -8,6 +8,7 @@ from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from agentaudit import __version__
@@ -18,12 +19,14 @@ from agentaudit.graph_export import to_mermaid, to_svg
 from agentaudit.introspect import IntrospectError, introspect
 from agentaudit.lockfile import LOCK_NAME, LockError, read_lock, write_lock
 from agentaudit.lockfile import verify as verify_lock
+from agentaudit.ml.classifier import Classifier, MLUnavailable, classify_servers
 from agentaudit.models import Finding, Server, Severity
 from agentaudit.reporters import to_badge, to_json, to_markdown, to_sarif
 from agentaudit.snapshot import SNAPSHOT_NAME, apply_snapshot, write_snapshot
 
 app = typer.Typer(help="Audit AI agent tool (MCP) configurations.", no_args_is_help=True)
 console = Console()
+err_console = Console(stderr=True)
 
 _STYLES = {
     Severity.INFO: "dim",
@@ -94,6 +97,23 @@ def _render(
     return to_badge(findings, fail_on)
 
 
+def _audit(servers: list[Server], classify: bool) -> list[Finding]:
+    findings = audit(servers)
+    if not classify:
+        return findings
+    try:
+        classifier = Classifier()
+    except MLUnavailable as exc:
+        err_console.print(f"[red]{escape(str(exc))}[/]")
+        raise typer.Exit(2) from exc
+    if not any(t.description.strip() for s in servers for t in s.tools):
+        err_console.print(
+            "[yellow]No tool descriptions to classify. Run `agentaudit snapshot --introspect` "
+            "to record them.[/]"
+        )
+    return [*findings, *classify_servers(servers, classifier)]
+
+
 def _emit(text: str, output: Path | None) -> None:
     if output:
         output.write_text(text, encoding="utf-8")
@@ -117,11 +137,19 @@ def scan(
     output: Annotated[
         Path | None, typer.Option("--output", "-o", help="Write the report to a file.")
     ] = None,
+    classify: Annotated[
+        bool,
+        typer.Option(
+            "--classify",
+            help="Also score tool descriptions with the local ML classifier (advisory only; "
+            "needs agentaudit[ml]).",
+        ),
+    ] = False,
 ) -> None:
     """Discover MCP servers, check rules, build the capability graph and report."""
     servers = _project_servers(path, user)
     if format is not ReportFormat.terminal:
-        findings = audit(servers)
+        findings = _audit(servers, classify)
         _emit(_render(format, servers, findings, path, fail_on), output)
         if _fails(findings, fail_on):
             raise typer.Exit(1)
@@ -137,7 +165,7 @@ def scan(
         table.add_row(s.client, s.name, launch, str(s.source))
     console.print(table)
 
-    findings = audit(servers)
+    findings = _audit(servers, classify)
     if findings:
         console.print(_findings_table(findings))
     else:

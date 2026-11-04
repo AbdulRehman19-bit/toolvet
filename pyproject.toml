@@ -15,6 +15,9 @@ dependencies = [
 [project.scripts]
 agentaudit = "agentaudit.cli:app"
 
+[project.optional-dependencies]
+ml = ["onnxruntime>=1.17", "numpy>=1.26"]
+
 [project.entry-points."agentaudit.rules"]
 # Third-party packages register rules in this group; built-ins load directly.
 
