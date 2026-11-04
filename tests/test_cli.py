@@ -22,11 +22,17 @@ def test_scan_reports_findings_and_fails_on_high():
     assert "AA002" in result.output
 
 
+def test_scan_reports_trifecta_with_evidence():
+    result = runner.invoke(app, ["scan", str(FIXTURES / "claude_desktop"), "--no-user"])
+    assert "AA100" in result.output
+    assert "untrusted_source via" in result.output
+
+
 def test_fail_on_threshold_is_respected():
-    args = ["scan", str(FIXTURES / "claude_desktop"), "--no-user", "--fail-on", "critical"]
+    args = ["scan", str(FIXTURES / "cursor"), "--no-user", "--fail-on", "critical"]
     result = runner.invoke(app, args)
     assert result.exit_code == 0
-    assert "AA003" in result.output
+    assert "AA005" in result.output
 
 
 def test_scan_with_no_findings(tmp_path):

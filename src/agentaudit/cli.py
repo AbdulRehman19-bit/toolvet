@@ -10,9 +10,9 @@ from rich.console import Console
 from rich.table import Table
 
 from agentaudit import __version__
+from agentaudit.audit import audit
 from agentaudit.discovery import discover
 from agentaudit.models import Finding, Severity
-from agentaudit.rules import run_rules
 
 app = typer.Typer(help="Audit AI agent tool (MCP) configurations.", no_args_is_help=True)
 console = Console()
@@ -49,7 +49,10 @@ def _findings_table(findings: list[Finding]) -> Table:
     for f in ordered:
         style = _STYLES[f.severity]
         where = f"{f.server}:{f.tool}" if f.tool else f.server
-        table.add_row(f"[{style}]{f.severity.value}[/]", f.rule_id, where, f.message)
+        message = f.message
+        if f.rule_id == "AA100":
+            message += "\n" + "\n".join(f"  {line}" for line in f.evidence)
+        table.add_row(f"[{style}]{f.severity.value}[/]", f.rule_id, where, message)
     return table
 
 
@@ -76,7 +79,7 @@ def scan(
         table.add_row(s.client, s.name, launch, str(s.source))
     console.print(table)
 
-    findings = run_rules(servers)
+    findings = audit(servers)
     if findings:
         console.print(_findings_table(findings))
     else:
