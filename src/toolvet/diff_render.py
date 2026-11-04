@@ -74,9 +74,25 @@ def _waiver_note(waiver: dict[str, str]) -> str:
 def _fix_items(change: TrifectaChange, name: Callable[[str], str]) -> list[str]:
     """Fix suggestions for a trifecta; `name` formats a server id (code span in Markdown)."""
     items = []
+    alternatives = change.drop_alternatives
     if change.drop_hint:
         names = ", ".join(name(s) for s in change.drop_hint)
-        if change.drop_movable:
+        if change.drop_movable and len(alternatives) > 1:
+            if all(len(alt) == 1 for alt in alternatives):
+                options = ", ".join(name(alt[0]) for alt in alternatives)
+                items.append(
+                    f"Drop or move any one of the servers this change adds ({options}): "
+                    "without that one there is no trifecta."
+                )
+            else:
+                sets = ", ".join(
+                    "(" + " + ".join(name(s) for s in alt) + ")" for alt in alternatives
+                )
+                items.append(
+                    f"Drop or move any one of these sets of servers this change adds ({sets}): "
+                    "without that set there is no trifecta."
+                )
+        elif change.drop_movable:
             items.append(
                 f"Drop or move the server(s) this change adds ({names}): without them there is "
                 "no trifecta."
@@ -288,6 +304,7 @@ def to_json(diff: Diff, fail_on: Severity) -> str:
                 "added_servers": t.added_servers,
                 "waiver": t.waiver,
                 "drop_hint": t.drop_hint,
+                "drop_alternatives": t.drop_alternatives,
                 "drop_movable": t.drop_movable,
                 "fixes": [o.describe() for o in t.fix_options],
             }

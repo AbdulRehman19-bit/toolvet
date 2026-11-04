@@ -72,6 +72,8 @@ class TrifectaChange:
     # The fewest servers this change adds whose removal makes the trifecta disappear.
     drop_hint: list[str] = field(default_factory=list)
     drop_movable: bool = True  # False if those servers are a trifecta on their own
+    # Every equally small set that would fix it (drop_hint is the first of them).
+    drop_alternatives: list[list[str]] = field(default_factory=list)
 
 
 @dataclass
@@ -207,15 +209,24 @@ def _suggest_fixes(
             continue
         mine = [s for s in scope if s.id in added_ids]
         for size in range(1, len(mine) + 1):
-            for combo in itertools.combinations(mine, size):
-                gone = {s.id for s in combo}
-                if not has_trifecta([s for s in scope if s.id not in gone]):
-                    change.drop_hint = sorted(gone)
-                    change.drop_movable = not has_trifecta(list(combo))
-                    # The hint already says this; do not list the same fix twice.
-                    change.fix_options = [o for o in change.fix_options if set(o.servers) != gone]
-                    return
-            # no subset of this size is enough; try larger ones
+            # Every set of this size whose removal fixes it, not just the first: when several
+            # would do, saying "drop web-search" would wrongly single one of them out.
+            working = [
+                combo
+                for combo in itertools.combinations(mine, size)
+                if not has_trifecta([s for s in scope if s not in combo])
+            ]
+            if not working:
+                continue  # no subset of this size is enough; try larger ones
+            movable = [c for c in working if not has_trifecta(list(c))]
+            chosen = movable or working
+            change.drop_movable = bool(movable)
+            change.drop_alternatives = [sorted(s.id for s in c) for c in chosen]
+            change.drop_hint = change.drop_alternatives[0]
+            # The hint already says this; do not list the same fix twice.
+            said = {frozenset(alt) for alt in change.drop_alternatives}
+            change.fix_options = [o for o in change.fix_options if frozenset(o.servers) not in said]
+            return
 
 
 def policy_change(base: Policy, head: Policy) -> PolicyChange:

@@ -138,3 +138,49 @@ def test_hostile_server_names_cannot_escape_the_fix_text(repo):
     assert "Smallest fixes:" in md
     stripped = re.sub(r"(`+).*?\1", "", re.sub(r"(`{3,}).*?\1", "", md, flags=re.DOTALL))
     assert "@octocat" not in stripped
+
+
+def test_when_any_one_of_several_added_servers_would_fix_it_all_are_named(repo):
+    # base has no servers that matter; the change adds a source, a reader and a sink at once
+    write(repo, "calc")
+    commit(repo, "calc only")
+    git(repo, "tag", "calc-only")
+    write(repo, "calc", "search", "postgres", "smtp")
+    t = trifecta(repo, "calc-only")
+    assert t["kind"] == "new"
+    assert sorted(a[0] for a in t["drop_alternatives"]) == [
+        "mcp:postgres",
+        "mcp:search",
+        "mcp:smtp",
+    ]
+    md = diff(repo, "markdown", "calc-only").output
+    assert "Drop or move any one of the servers this change adds" in md
+    for server in ("`mcp:search`", "`mcp:postgres`", "`mcp:smtp`"):
+        assert server in md
+    # the same fix is not repeated as a separate bullet
+    assert "Move `mcp:postgres` to a separate agent profile" not in md
+
+
+def test_a_single_sufficient_server_keeps_the_singular_wording(repo):
+    write(repo, "search", "postgres", "smtp")
+    t = trifecta(repo)
+    assert t["drop_alternatives"] == [["mcp:smtp"]] and t["drop_hint"] == ["mcp:smtp"]
+    md = diff(repo, "markdown").output
+    assert "Drop or move the server(s) this change adds (`mcp:smtp`)" in md
+    assert "any one of" not in md
+
+
+def test_a_set_that_includes_a_server_that_is_a_trifecta_alone_is_not_called_movable(repo):
+    # the base has a source and a reader; the change adds gmail (all three alone) and smtp.
+    # Both added sinks must go (either one alone leaves a sink), and because gmail is a trifecta
+    # by itself, moving the pair to another profile would not help.
+    write(repo, "calc", "search", "postgres")
+    commit(repo, "source and reader only")
+    git(repo, "tag", "no-sink")
+    write(repo, "calc", "search", "postgres", "gmail", "smtp")
+    t = trifecta(repo, "no-sink")
+    assert t["drop_alternatives"] == [["mcp:gmail", "mcp:smtp"]]
+    assert t["drop_movable"] is False
+    text = " ".join(diff(repo, "markdown", "no-sink").output.split())
+    assert "Remove the server(s) this change adds" in text
+    assert "moving them elsewhere does not help" in text
