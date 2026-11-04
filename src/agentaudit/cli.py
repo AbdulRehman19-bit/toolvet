@@ -19,6 +19,7 @@ from agentaudit.introspect import IntrospectError, introspect
 from agentaudit.lockfile import LOCK_NAME, LockError, read_lock, write_lock
 from agentaudit.lockfile import verify as verify_lock
 from agentaudit.models import Finding, Server, Severity
+from agentaudit.reporters import to_badge, to_json, to_markdown, to_sarif
 from agentaudit.snapshot import SNAPSHOT_NAME, apply_snapshot, write_snapshot
 
 app = typer.Typer(help="Audit AI agent tool (MCP) configurations.", no_args_is_help=True)
@@ -63,6 +64,38 @@ def _findings_table(findings: list[Finding]) -> Table:
     return table
 
 
+class ReportFormat(str, Enum):
+    terminal = "terminal"
+    json = "json"
+    sarif = "sarif"
+    markdown = "markdown"
+    badge = "badge"
+
+
+def _render(
+    format: ReportFormat,
+    servers: list[Server],
+    findings: list[Finding],
+    root: Path,
+    fail_on: Severity,
+) -> str:
+    if format is ReportFormat.json:
+        return to_json(servers, findings, root)
+    if format is ReportFormat.sarif:
+        return to_sarif(findings, root)
+    if format is ReportFormat.markdown:
+        return to_markdown(servers, findings)
+    return to_badge(findings, fail_on)
+
+
+def _emit(text: str, output: Path | None) -> None:
+    if output:
+        output.write_text(text, encoding="utf-8")
+        console.print(f"Wrote {output}")
+    else:
+        typer.echo(text, nl=False)
+
+
 @app.command()
 def scan(
     path: Annotated[Path, typer.Argument(help="Repository or directory to scan.")] = Path("."),
@@ -72,9 +105,21 @@ def scan(
     fail_on: Annotated[
         Severity, typer.Option("--fail-on", help="Exit 1 if a finding is at least this severe.")
     ] = Severity.HIGH,
+    format: Annotated[
+        ReportFormat, typer.Option("--format", help="Report format.")
+    ] = ReportFormat.terminal,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write the report to a file.")
+    ] = None,
 ) -> None:
     """Discover MCP servers, check rules, build the capability graph and report."""
-    servers = discover(path, home=Path.home() if user else None)
+    servers = _project_servers(path, user)
+    if format is not ReportFormat.terminal:
+        findings = audit(servers)
+        _emit(_render(format, servers, findings, path, fail_on), output)
+        if any(f.severity.rank >= fail_on.rank for f in findings):
+            raise typer.Exit(1)
+        return
     if not servers:
         console.print("No MCP servers found.")
         raise typer.Exit()
