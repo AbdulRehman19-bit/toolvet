@@ -31,6 +31,9 @@ def rules(server: Server) -> set[str]:
         "xxxxxxxx",
         "********",
         "sk-...",
+        "ghp_*****************",
+        "ghp_xxxxxxxxxxxxxxxx",
+        "xoxb-********",
         "<token>",
         "[token]",
         "changeme",
@@ -49,7 +52,13 @@ def test_placeholder_values_are_not_secrets(value):
 
 @pytest.mark.parametrize(
     "value",
-    ["ghp_16C7e42F292c6912E7710c838347Ae178B4a", "s3cr3tvalue", "hunter2", "AKIAIOSFODNN7EXAMPLE1"],
+    [
+        "ghp_16C7e42F292c6912E7710c838347Ae178B4a",
+        "s3cr3tvalue",
+        "hunter2",
+        "AKIAIOSFODNN7EXAMPLE1",
+        "ghp_16C7e42F292c6912E7710c838347Ae178B4axxx",
+    ],
 )
 def test_real_looking_values_are_still_flagged(value):
     assert "TV002" in rules(make(env={"API_KEY": value}))

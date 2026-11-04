@@ -44,7 +44,7 @@ _OBVIOUS_PLACEHOLDER = re.compile(
         | .*[_\- ]here
         | x{3,} | \*{3,} | \.{3,}
         | \[.*\]
-        | (sk|pk|key|token)[_\-]?(\.{3,}|x{3,}|\*+)
+        | [a-z0-9]{1,12}[_\-]?(\.{3,}|x{3,}|\*{3,})
         | change[_\- ]?me | replace[_\- ]?me | placeholder | redacted | dummy | todo
         | insert[_\- ].* | paste[_\- ].*
     )\s*$""",
