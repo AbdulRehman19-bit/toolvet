@@ -233,3 +233,24 @@ def test_paths_outside_the_scan_root_fall_back_to_the_file_name(tmp_path):
     assert _config_name(finding.model_copy(update={"source": None}), tmp_path) == "?"
     server = Server(name="s", client="c", source=outside)
     assert _relative(server, tmp_path) == outside.name
+
+
+def test_several_equally_small_sets_of_added_servers_are_all_offered(tmp_path):
+    b, h = tmp_path / "base", tmp_path / "head"
+
+    def server(root, name):
+        return Server(name=name, client="mcp", source=root / ".mcp.json", command="node")
+
+    # two servers per layer are added, so the smallest fix is one whole pair, and there are three
+    added = ["search", "brave", "postgres", "mysql", "smtp", "sendgrid"]
+    d = compute_diff([server(b, "calc")], [server(h, "calc"), *[server(h, n) for n in added]], b, h)
+    (trifecta,) = d.trifectas
+    assert len(trifecta.drop_alternatives) == 3
+    assert all(len(alt) == 2 for alt in trifecta.drop_alternatives)
+    text = flat(to_text(d, Severity.HIGH))
+    assert "any one of these sets of servers this change adds" in text
+    assert "(mcp:brave + mcp:search)" in text
+    md = to_markdown(d, Severity.HIGH)
+    assert "any one of these sets" in md and "`mcp:smtp` + `mcp:sendgrid`" in md.replace(
+        "`mcp:sendgrid` + `mcp:smtp`", "`mcp:smtp` + `mcp:sendgrid`"
+    )
