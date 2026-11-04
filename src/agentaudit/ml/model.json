@@ -1,0 +1,9 @@
+{
+  "model_version": 1,
+  "dim": 2048,
+  "threshold": 0.230685,
+  "C": 20.0,
+  "target_validation_fpr": 0.01,
+  "train_rows": 1252,
+  "validation_rows": 523
+}
