@@ -14,6 +14,7 @@ import re
 from agentaudit.capabilities import tag_server
 from agentaudit.diff import Diff, launch_line
 from agentaudit.models import Finding, Server, Severity
+from agentaudit.policy import Waiver
 
 MARKER = "<!-- agentaudit-diff -->"
 SPAN_LIMIT = 200
@@ -59,6 +60,20 @@ def _trifecta_sentence(kind: str) -> str:
     }[kind]
 
 
+_SELF_WAIVER_NOTE = (
+    "Waivers added by this change are NOT applied to this check: a change cannot waive its own "
+    "risk. A reviewer must approve them, and they take effect once merged."
+)
+
+
+def _waiver_note(waiver: dict[str, str]) -> str:
+    return f"{waiver['reason']} (owner {waiver['owner']}, expires {waiver['expires']})"
+
+
+def _waiver_text(w: Waiver) -> str:
+    return f"{w.label()}: {w.reason} (owner {w.owner}, expires {w.expires})"
+
+
 def to_text(diff: Diff, fail_on: Severity) -> str:
     if diff.is_empty:
         return "No capability changes.\n"
@@ -68,7 +83,10 @@ def to_text(diff: Diff, fail_on: Severity) -> str:
     ]
     for t in diff.trifectas:
         extra = f" (adds {', '.join(t.added_servers)})" if t.added_servers else ""
-        out.append(f"{_trifecta_sentence(t.kind)} in {t.config}{extra}: {', '.join(t.servers)}")
+        accepted = f" [accepted by policy: {_waiver_note(t.waiver)}]" if t.waiver else ""
+        out.append(
+            f"{_trifecta_sentence(t.kind)} in {t.config}{extra}: {', '.join(t.servers)}{accepted}"
+        )
     if diff.new_findings:
         out += ["", "New findings:"] + [f"  {_finding_line(f)}" for f in diff.new_findings]
     if diff.added:
@@ -104,6 +122,13 @@ def to_text(diff: Diff, fail_on: Severity) -> str:
                 ]
     if diff.resolved_findings:
         out += ["", "Resolved:"] + [f"  {_finding_line(f)}" for f in diff.resolved_findings]
+    if not diff.policy.is_empty:
+        out += ["", "Policy changes in this change (agent.policy.toml):"]
+        out += [f"  waiver added: {_waiver_text(w)}" for w in diff.policy.added_waivers]
+        out += [f"  waiver removed: {_waiver_text(w)}" for w in diff.policy.removed_waivers]
+        out += [f"  {n}" for n in diff.policy.notes]
+        if diff.policy.added_waivers and diff.policy_mode == "base":
+            out.append(_SELF_WAIVER_NOTE)
     return "\n".join(out) + "\n"
 
 
@@ -128,7 +153,9 @@ def to_markdown(diff: Diff, fail_on: Severity) -> str:
             f"In {_code(t.config)}{extra}. Servers involved: "
             + ", ".join(_code(s) for s in t.servers),
         ]
-        if t.kind != "resolved":
+        if t.waiver:
+            lines.append(f"\nAccepted by policy: {_code(_waiver_note(t.waiver))}")
+        elif t.kind != "resolved":
             lines.append(
                 "\nUntrusted input can reach private data and a channel that sends data out. "
                 "Consider moving one of these servers to a separate agent profile."
@@ -143,7 +170,8 @@ def to_markdown(diff: Diff, fail_on: Severity) -> str:
         ]
         for f in diff.new_findings:
             where = f"{f.server}:{f.tool}" if f.tool else f.server
-            tag = f"{f.severity.value} (advisory)" if f.advisory else f.severity.value
+            tag = f.severity.value + (" (advisory)" if f.advisory else "")
+            tag += " (waived)" if f.waiver else ""
             lines.append(f"| {tag} | {f.rule_id} | {_code(where)} | {_code(f.message)} |")
     if diff.added:
         lines += ["", "### Servers added", ""]
@@ -180,6 +208,15 @@ def to_markdown(diff: Diff, fail_on: Severity) -> str:
     if diff.resolved_findings:
         lines += ["", "### Resolved", ""]
         lines += [f"- {_code(_finding_line(f))}" for f in diff.resolved_findings]
+    if not diff.policy.is_empty:
+        lines += ["", "### Policy changes (`agent.policy.toml`)", ""]
+        lines += [f"- waiver added: {_code(_waiver_text(w))}" for w in diff.policy.added_waivers]
+        lines += [
+            f"- waiver removed: {_code(_waiver_text(w))}" for w in diff.policy.removed_waivers
+        ]
+        lines += [f"- {_code(n)}" for n in diff.policy.notes]
+        if diff.policy.added_waivers and diff.policy_mode == "base":
+            lines += ["", f"**{_SELF_WAIVER_NOTE}**"]
     return "\n".join(lines) + "\n"
 
 
@@ -192,6 +229,7 @@ def to_json(diff: Diff, fail_on: Severity) -> str:
             "server": f.server,
             "tool": f.tool,
             "advisory": f.advisory,
+            "waiver": f.waiver,
         }
 
     data = {
@@ -225,10 +263,17 @@ def to_json(diff: Diff, fail_on: Severity) -> str:
                 "kind": t.kind,
                 "servers": t.servers,
                 "added_servers": t.added_servers,
+                "waiver": t.waiver,
             }
             for t in diff.trifectas
         ],
         "new_findings": [finding(f) for f in diff.new_findings],
         "resolved_findings": [finding(f) for f in diff.resolved_findings],
+        "policy": {
+            "mode": diff.policy_mode,
+            "waivers_added": [_waiver_text(w) for w in diff.policy.added_waivers],
+            "waivers_removed": [_waiver_text(w) for w in diff.policy.removed_waivers],
+            "notes": diff.policy.notes,
+        },
     }
     return json.dumps(data, indent=2) + "\n"

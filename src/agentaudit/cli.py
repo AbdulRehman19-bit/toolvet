@@ -15,7 +15,7 @@ from rich.text import Text
 
 from agentaudit import __version__
 from agentaudit.audit import audit, load_servers
-from agentaudit.diff import compute_diff
+from agentaudit.diff import active_policy, compute_diff
 from agentaudit.diff_render import to_json as diff_json
 from agentaudit.diff_render import to_markdown as diff_markdown
 from agentaudit.diff_render import to_text as diff_text
@@ -378,6 +378,12 @@ class DiffFormat(str, Enum):
     json = "json"
 
 
+class PolicyMode(str, Enum):
+    base = "base"
+    head = "head"
+    none = "none"
+
+
 @app.command("diff")
 def diff_command(
     path: Annotated[Path, typer.Argument(help="Repository to compare.")] = Path("."),
@@ -393,8 +399,22 @@ def diff_command(
         Path | None, typer.Option("--output", "-o", help="Write the report to a file.")
     ] = None,
     fail_on: Annotated[
-        Severity, typer.Option("--fail-on", help="Exit 1 if the change adds a finding this severe.")
-    ] = Severity.HIGH,
+        Severity | None,
+        typer.Option(
+            "--fail-on",
+            help="Exit 1 if the change adds a finding this severe (default: the policy's "
+            "fail_on, else high).",
+        ),
+    ] = None,
+    policy_mode: Annotated[
+        PolicyMode,
+        typer.Option(
+            "--policy",
+            help="Which agent.policy.toml suppresses findings. 'base' (default) stops a change "
+            "from waiving its own risk; 'head' trusts the new policy (use with CODEOWNERS on it); "
+            "'none' ignores waivers.",
+        ),
+    ] = PolicyMode.base,
 ) -> None:
     """Show what a change does to your agent's capabilities, compared with a git ref."""
     if not base:
@@ -411,7 +431,19 @@ def diff_command(
         except GitError as exc:
             console.print(f"[red]{escape(str(exc))}[/]")
             raise typer.Exit(2) from exc
-        result = compute_diff(load_servers(base_dir), load_servers(head_dir), base_dir, head_dir)
+        base_policy = _load_policy(base_dir, None)
+        head_policy = _load_policy(head_dir, None)
+        fail_on = fail_on or active_policy(policy_mode.value, base_policy, head_policy).fail_on
+        fail_on = fail_on or Severity.HIGH
+        result = compute_diff(
+            load_servers(base_dir),
+            load_servers(head_dir),
+            base_dir,
+            head_dir,
+            base_policy,
+            head_policy,
+            policy_mode.value,
+        )
     if format is DiffFormat.markdown:
         text = diff_markdown(result, fail_on)
     elif format is DiffFormat.json:

@@ -6,11 +6,13 @@ import subprocess
 from pathlib import Path
 
 from agentaudit.discovery import _PROJECT_CONFIGS
+from agentaudit.policy import POLICY_NAME
 from agentaudit.snapshot import SNAPSHOT_NAME
 
 CONFIG_FILES = [rel for rel, _ in _PROJECT_CONFIGS.values()] + [
     "claude_desktop_config.json",
     SNAPSHOT_NAME,
+    POLICY_NAME,
 ]
 TIMEOUT = 30
 

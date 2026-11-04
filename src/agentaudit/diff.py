@@ -9,6 +9,7 @@ from pathlib import Path
 from agentaudit.audit import audit
 from agentaudit.capabilities import tag_server
 from agentaudit.models import Finding, Server, Severity
+from agentaudit.policy import Policy, Waiver, apply_policy
 from agentaudit.rules.builtin import _CRED_FLAG, _CRED_URL
 
 _URL_PASSWORD = re.compile(r"(://[^/@\s:]+:)[^/@\s]+(@)")
@@ -64,6 +65,20 @@ class TrifectaChange:
     kind: str  # new | widened | resolved
     servers: list[str]
     added_servers: list[str] = field(default_factory=list)
+    waiver: dict[str, str] | None = None  # set when the active policy accepts this trifecta
+
+
+@dataclass
+class PolicyChange:
+    """What the change does to agent.policy.toml. Reviewers must look at added waivers."""
+
+    added_waivers: list[Waiver] = field(default_factory=list)
+    removed_waivers: list[Waiver] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+    @property
+    def is_empty(self) -> bool:
+        return not (self.added_waivers or self.removed_waivers or self.notes)
 
 
 @dataclass
@@ -76,6 +91,8 @@ class Diff:
     new_findings: list[Finding]
     resolved_findings: list[Finding]
     trifectas: list[TrifectaChange]
+    policy: PolicyChange = field(default_factory=PolicyChange)
+    policy_mode: str = "base"  # which policy suppressed findings: base | head | none
 
     @property
     def is_empty(self) -> bool:
@@ -88,13 +105,17 @@ class Diff:
             or self.new_findings
             or self.resolved_findings
             or self.trifectas
+            or not self.policy.is_empty
         )
 
     def introduces_risk(self, fail_on: Severity) -> bool:
         """True if the change adds a failing finding or creates or widens a trifecta."""
-        if any(t.kind in ("new", "widened") for t in self.trifectas):
+        if any(t.kind in ("new", "widened") and t.waiver is None for t in self.trifectas):
             return True
-        return any(not f.advisory and f.severity.rank >= fail_on.rank for f in self.new_findings)
+        return any(
+            not f.advisory and f.waiver is None and f.severity.rank >= fail_on.rank
+            for f in self.new_findings
+        )
 
 
 def _key(finding: Finding) -> tuple:
@@ -129,26 +150,69 @@ def _server_details(old: Server, new: Server) -> list[str]:
 def _trifectas(
     base: list[Finding], head: list[Finding], base_root: Path, head_root: Path
 ) -> list[TrifectaChange]:
-    def collect(findings: list[Finding], root: Path) -> dict[str, set[str]]:
-        found: dict[str, set[str]] = {}
+    def collect(findings: list[Finding], root: Path) -> dict[str, tuple[set[str], dict | None]]:
+        found: dict[str, tuple[set[str], dict | None]] = {}
         for f in findings:
             if f.rule_id == "AA100":
-                found.setdefault(_config_name(f, root), set()).update(f.server.split(", "))
+                name = _config_name(f, root)
+                servers, waiver = found.get(name, (set(), f.waiver))
+                # A scope counts as accepted only if every trifecta finding in it is waived.
+                found[name] = (servers | set(f.server.split(", ")), waiver and f.waiver)
         return found
 
     old, new = collect(base, base_root), collect(head, head_root)
     changes = []
     for config in sorted(new):
+        servers, waiver = new[config]
         if config not in old:
-            changes.append(TrifectaChange(config, "new", sorted(new[config])))
-        elif grown := new[config] - old[config]:
-            changes.append(TrifectaChange(config, "widened", sorted(new[config]), sorted(grown)))
+            changes.append(TrifectaChange(config, "new", sorted(servers), waiver=waiver))
+        elif grown := servers - old[config][0]:
+            changes.append(
+                TrifectaChange(config, "widened", sorted(servers), sorted(grown), waiver=waiver)
+            )
     for config in sorted(old.keys() - new.keys()):
-        changes.append(TrifectaChange(config, "resolved", sorted(old[config])))
+        changes.append(TrifectaChange(config, "resolved", sorted(old[config][0])))
     return changes
 
 
-def compute_diff(base: list[Server], head: list[Server], base_root: Path, head_root: Path) -> Diff:
+def policy_change(base: Policy, head: Policy) -> PolicyChange:
+    notes = []
+    if base.fail_on != head.fail_on:
+        notes.append(
+            f"fail_on: {base.fail_on.value if base.fail_on else 'unset'} -> "
+            f"{head.fail_on.value if head.fail_on else 'unset'}"
+        )
+    for rule in sorted(base.severity.keys() | head.severity.keys()):
+        a, b = base.severity.get(rule), head.severity.get(rule)
+        if a != b:
+            notes.append(
+                f"severity {rule}: {a.value if a else 'default'} -> {b.value if b else 'default'}"
+            )
+    if base.max_waiver_days != head.max_waiver_days:
+        notes.append(f"max_waiver_days: {base.max_waiver_days} -> {head.max_waiver_days}")
+    return PolicyChange(
+        added_waivers=[w for w in head.waivers if w not in base.waivers],
+        removed_waivers=[w for w in base.waivers if w not in head.waivers],
+        notes=notes,
+    )
+
+
+def active_policy(mode: str, base: Policy, head: Policy) -> Policy:
+    """The policy that suppresses findings. `base` stops a PR from waiving its own risk."""
+    return {"base": base, "head": head}.get(mode, Policy())
+
+
+def compute_diff(
+    base: list[Server],
+    head: list[Server],
+    base_root: Path,
+    head_root: Path,
+    base_policy: Policy | None = None,
+    head_policy: Policy | None = None,
+    policy_mode: str = "base",
+) -> Diff:
+    base_policy, head_policy = base_policy or Policy(), head_policy or Policy()
+    active = active_policy(policy_mode, base_policy, head_policy)
     old = {s.id: s for s in base}
     new = {s.id: s for s in head}
     changed, capabilities, tools = [], [], []
@@ -171,7 +235,8 @@ def compute_diff(base: list[Server], head: list[Server], base_root: Path, head_r
             if (a.description, a.input_schema) != (b.description, b.input_schema):
                 tools.append(ToolChange(sid, name, "changed", a.description, b.description))
 
-    base_findings, head_findings = audit(base), audit(head)
+    base_findings = apply_policy(audit(base), active)
+    head_findings = apply_policy(audit(head), active)
     base_keys = {_key(f) for f in base_findings if f.rule_id != "AA100"}
     head_keys = {_key(f) for f in head_findings if f.rule_id != "AA100"}
     return Diff(
@@ -187,4 +252,6 @@ def compute_diff(base: list[Server], head: list[Server], base_root: Path, head_r
             f for f in base_findings if f.rule_id != "AA100" and _key(f) not in head_keys
         ],
         trifectas=_trifectas(base_findings, head_findings, base_root, head_root),
+        policy=policy_change(base_policy, head_policy),
+        policy_mode=policy_mode,
     )
