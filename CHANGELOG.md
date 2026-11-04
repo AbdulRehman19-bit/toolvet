@@ -3,6 +3,16 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-11-04
+
+### Added
+- `agent.policy.toml`: a default `fail_on`, per-rule severity overrides, and **waivers** with a required reason, owner and expiry (capped at 365 days by default). Invalid policies are rejected with every problem listed.
+- A trifecta (AA100) waiver lists the exact servers it accepts and covers only a trifecta made of those servers, so adding a server stops the waiver applying.
+- Waived findings stay visible: shown as `(waived)` with reason and owner, written to SARIF as native suppressions and to JSON, and never fail `scan`, `diff` or the badge.
+- `agentaudit policy check [--strict]` reports expired, soon-to-expire and unused waivers; `scan` prints the same notes.
+- `diff --policy base|head|none`: by default the **base** branch's policy applies, so a pull request cannot waive its own risk. Waivers, severity and `fail_on` changes made by the change are listed for reviewers. Action input `diff-policy`.
+- `scan` and `diff` take `fail_on` from the policy unless `--fail-on` is given.
+
 ## [0.4.0] - 2026-11-04
 
 ### Added
