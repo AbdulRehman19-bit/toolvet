@@ -83,7 +83,9 @@ def wildcard_path(server: Server) -> Iterator[Hit]:
             continue
         if arg in _ROOT_PATHS or _DRIVE_ROOT.match(arg) or arg.endswith(("/*", "\\*")):
             yield Hit(
-                Severity.HIGH, f"Argument {arg!r} grants access to a very broad path", evidence=[arg]
+                Severity.HIGH,
+                f"Argument {arg!r} grants access to a very broad path",
+                evidence=[arg],
             )
 
 
@@ -92,3 +94,92 @@ def plain_http(server: Server) -> Iterator[Hit]:
     url = server.url or ""
     if url.startswith("http://") and not re.match(r"http://(localhost|127\.0\.0\.1|\[::1\])", url):
         yield Hit(Severity.MEDIUM, "Remote server is reached over unencrypted HTTP", evidence=[url])
+
+
+_INJECTION = [
+    r"ignore (all |any )?(previous|prior|above) instructions",
+    r"do not (tell|inform|mention|reveal)[^.]{0,40}\buser\b",
+    r"<important>",
+    r"before (using|calling) this tool[^.]{0,60}\b(read|send|open)\b",
+    r"(~|/home/\w+)/\.(ssh|aws)|id_rsa|\.env\b",
+]
+_CRED_URL = re.compile(r"://[^/@\s:]+:[^/@\s]+@")
+_CRED_QUERY = re.compile(r"[?&](token|key|api_key|apikey|secret|password)=[^&]+", re.IGNORECASE)
+_CRED_FLAG = re.compile(r"^--?(token|password|passwd|secret|api-?key)(=.+)?$", re.IGNORECASE)
+_DOWNLOAD_EXEC = re.compile(
+    r"(curl|wget)\b[^|;]*\|\s*(sudo\s+)?(sh|bash)|\biex\b|invoke-expression", re.IGNORECASE
+)
+
+
+@rule("AA006", "Suspicious tool description")
+def suspicious_description(server: Server) -> Iterator[Hit]:
+    for tool in server.tools:
+        for pattern in _INJECTION:
+            match = re.search(pattern, tool.description, re.IGNORECASE)
+            if match:
+                yield Hit(
+                    Severity.HIGH,
+                    f"Tool description contains instruction-like text ({match.group(0)!r})",
+                    tool=tool.name,
+                    evidence=[match.group(0)],
+                )
+
+
+@rule("AA007", "Credentials in server URL")
+def url_credentials(server: Server) -> Iterator[Hit]:
+    url = server.url or ""
+    if _CRED_URL.search(url) or _CRED_QUERY.search(url):
+        yield Hit(
+            Severity.HIGH,
+            "Server URL embeds credentials; use a header or env reference instead",
+            evidence=[url.split("?")[0].split("@")[-1]],
+        )
+
+
+@rule("AA008", "Credentials in arguments")
+def arg_credentials(server: Server) -> Iterator[Hit]:
+    args = server.args
+    for i, arg in enumerate(args):
+        if _CRED_URL.search(arg):
+            yield Hit(Severity.HIGH, "Argument embeds a credentialed URL", evidence=["<url>"])
+        elif _CRED_FLAG.match(arg):
+            has_value = "=" in arg or (i + 1 < len(args) and not args[i + 1].startswith("-"))
+            value = arg.split("=", 1)[1] if "=" in arg else (args[i + 1] if has_value else "")
+            if has_value and not _PLACEHOLDER.match(value):
+                yield Hit(
+                    Severity.HIGH,
+                    f"Flag {arg.split('=')[0]} passes a literal secret on the command line",
+                    evidence=[arg.split("=")[0]],
+                )
+
+
+@rule("AA009", "Download and execute")
+def download_exec(server: Server) -> Iterator[Hit]:
+    line = " ".join([server.command or "", *server.args])
+    if _command_name(server) in {"curl", "wget"} or _DOWNLOAD_EXEC.search(line):
+        yield Hit(
+            Severity.HIGH, "Server launch downloads and runs remote code", evidence=[line[:80]]
+        )
+
+
+@rule("AA010", "Risky container options")
+def risky_container(server: Server) -> Iterator[Hit]:
+    if _command_name(server) not in {"docker", "podman"}:
+        return
+    args = server.args
+    for i, arg in enumerate(args):
+        value = args[i + 1] if i + 1 < len(args) else ""
+        mount = value if arg in {"-v", "--volume"} else arg.split("=", 1)[-1]
+        if arg == "--privileged":
+            yield Hit(Severity.HIGH, "Container runs with --privileged", evidence=[arg])
+        elif arg in {"-v", "--volume"} or arg.startswith(("-v=", "--volume=")):
+            if mount.startswith(("/:", "/var/run/docker.sock")) or "docker.sock" in mount:
+                yield Hit(
+                    Severity.HIGH,
+                    "Container mounts the host root or Docker socket",
+                    evidence=[mount],
+                )
+        elif arg in {"--network=host", "--net=host"} or (
+            arg in {"--network", "--net"} and value == "host"
+        ):
+            yield Hit(Severity.MEDIUM, "Container shares the host network", evidence=[arg])
