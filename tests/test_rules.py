@@ -17,7 +17,8 @@ def ids(server: Server) -> set[str]:
 
 
 def test_shell_launch_and_name():
-    assert "AA001" in ids(make(command="bash", args=["-c", "x"]))
+    assert "AA001" in ids(make(command="bash", args=["-c", "x | y"]))
+    assert "AA001" in ids(make(command="bash"))
     assert "AA001" in ids(make(command="C:\\Windows\\cmd.exe"))
     assert "AA001" in ids(make(command="npx", args=["-y", "mcp-shell-server@1.0.0"]))
     assert "AA001" not in ids(make(command="npx", args=["-y", "pkg@1.0.0"]))

@@ -20,6 +20,7 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from importlib.metadata import entry_points
 
+from agentaudit.launch import effective
 from agentaudit.models import Finding, Server, Severity
 
 
@@ -69,8 +70,9 @@ def run_rules(servers: Iterable[Server], rules: list[Rule] | None = None) -> lis
 
 def _run(servers: Iterable[Server], rules: list[Rule]) -> Iterator[Finding]:
     for server in servers:
+        launched = effective(server)  # rules judge the command a wrapper really starts
         for r in rules:
-            for hit in r.check(server):
+            for hit in r.check(launched):
                 yield Finding(
                     rule_id=r.id,
                     severity=hit.severity,

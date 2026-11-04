@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse
 
+from agentaudit.launch import effective
 from agentaudit.models import Capability, Server
 
 S, P, K = Capability.UNTRUSTED_SOURCE, Capability.PRIVATE_DATA, Capability.SINK
@@ -81,10 +82,14 @@ KEYWORDS: dict[str, frozenset[Capability]] = {
 
 
 def _tokens(server: Server) -> list[str]:
+    server = effective(server)  # `bash -c "npx ..."` is a launcher, not a shell tool
     parts = [server.name, server.command or "", *server.args, *(t.name for t in server.tools)]
     if server.url:
         parts.append(urlparse(server.url).netloc)
-    return [t for t in re.split(r"[^a-z0-9]+", " ".join(parts).lower()) if t]
+    text = " ".join(parts).lower()
+    # A URL scheme is not a keyword: `http://localhost` must not tag a server as an HTTP sink.
+    text = re.sub(r"\bhttps?://", " ", text)
+    return [t for t in re.split(r"[^a-z0-9]+", text) if t]
 
 
 def tag_server(server: Server) -> dict[Capability, str]:
