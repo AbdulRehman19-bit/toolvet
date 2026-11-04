@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="888" height="208" viewBox="0 0 888 208" font-family="sans-serif" font-size="13">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#718096"/></marker></defs>
+<rect width="888" height="208" fill="#ffffff"/>
+<text x="24" y="38" font-weight="bold" fill="#2d3748">Reads untrusted input</text>
+<text x="324" y="38" font-weight="bold" fill="#2d3748">Reads private data</text>
+<text x="624" y="38" font-weight="bold" fill="#2d3748">Sends data out</text>
+<line x1="264" y1="86" x2="324" y2="86" stroke="#718096" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="564" y1="86" x2="624" y2="86" stroke="#718096" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="564" y1="86" x2="624" y2="146" stroke="#718096" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="264" y1="146" x2="324" y2="86" stroke="#718096" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="24" y="64" width="240" height="44" rx="6" fill="#fff4d6" stroke="#b7791f"/><text x="34" y="91" fill="#1a202c">claude-desktop:fetch (fetch)</text>
+<rect x="24" y="124" width="240" height="44" rx="6" fill="#fff4d6" stroke="#b7791f"/><text x="34" y="151" fill="#1a202c">claude-desktop:github (github)</text>
+<rect x="324" y="64" width="240" height="44" rx="6" fill="#e6f0ff" stroke="#2b6cb0"/><text x="334" y="91" fill="#1a202c">claude-desktop:filesystem (filesystem)</text>
+<rect x="624" y="64" width="240" height="44" rx="6" fill="#fde3e3" stroke="#c53030"/><text x="634" y="91" fill="#1a202c">claude-desktop:fetch (fetch)</text>
+<rect x="624" y="124" width="240" height="44" rx="6" fill="#fde3e3" stroke="#c53030"/><text x="634" y="151" fill="#1a202c">claude-desktop:github (github)</text>
+</svg>
