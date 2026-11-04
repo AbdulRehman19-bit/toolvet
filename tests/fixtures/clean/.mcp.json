@@ -1,1 +1,15 @@
-{"mcpServers": {"notes": {"command": "node", "args": ["server.js"]}}}
+{
+  "mcpServers": {
+    "notes": { "command": "node", "args": ["server.js"] },
+    "web-search": { "command": "npx", "args": ["-y", "brave-search-mcp@1.2.0"] },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres@0.6.2", "postgresql://localhost/app"]
+    },
+    "mailer": {
+      "command": "uvx",
+      "args": ["mcp-server-smtp"],
+      "env": { "SMTP_PASSWORD": "s3cr3t-demo-value" }
+    }
+  }
+}
