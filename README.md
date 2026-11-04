@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: AbdulRehman19-bit/agentaudit@v0.5.0
+      - uses: AbdulRehman19-bit/agentaudit@v0.6.0
         with:
           fail-on: high
           upload-sarif: "true"   # shows findings in the Security tab
@@ -94,7 +94,13 @@ On pull requests the GitHub Action runs it automatically, writes the report to t
 >
 > In `.mcp.json`. Servers involved: `mcp:mailer`, `mcp:postgres`, `mcp:web-search`
 >
-> Untrusted input can reach private data and a channel that sends data out. Consider moving one of these servers to a separate agent profile.
+> Untrusted input can reach private data and a channel that sends data out.
+>
+> Smallest fixes:
+>
+> - Drop or move the server(s) this change adds (`mcp:mailer`): without them there is no trifecta.
+> - Move `mcp:web-search` to a separate agent profile (or remove it). It is the only server here that reads untrusted input, so nothing in this config reads untrusted input afterwards.
+> - Move `mcp:postgres` to a separate agent profile (or remove it). It is the only server here that reads private data, so nothing in this config reads private data afterwards.
 >
 > | Severity | Rule | Where | Message |
 > |---|---|---|---|
@@ -174,6 +180,8 @@ Measured accuracy, with the caveats that matter, is in [docs/classifier.md](docs
 
 ## How the trifecta check works, and its limits
 
+**Fixes, not just alarms.** Every trifecta finding lists the smallest fixes. Within one config, a trifecta exists exactly when all three layers (untrusted source, private data, sink) are present, so the cheapest fix is whichever layer the fewest servers supply: take those servers out of the config, or move them to a separate agent profile, and every path is broken. This is exact, not a heuristic (it is tested against exhaustive search). It also says when moving does not help: a server that can do all three on its own, such as a mail server that reads, stores and sends, has to be restricted or removed. In pull request comments, the first suggestion is the fewest servers *this change adds* whose removal makes the trifecta disappear.
+
 Capability tags come from a fixed keyword table ([capabilities.py](src/agentaudit/capabilities.py)) matched against each server's name, command, arguments, URL host and tool names. There is no inference, and every finding prints the keyword behind each tag, so you can check it line by line.
 
 That makes it explainable, but not precise:
@@ -195,6 +203,7 @@ What agentaudit does differently, based on both projects' public READMEs and blo
 | Cross-tool flow analysis | Yes: fixed keyword table, source to private data to sink within one config, every hop explained | Yes: flow graph with trust, sensitivity and sink properties; part of the analysis runs through their API |
 | Approval pinning | `agent.lock` is committed to your repo and reviewed in pull requests; `verify` fails CI | The original MCP-Scan pinned tool hashes; the current README does not document it, and its state file defaults to `~/.mcp-scan` |
 | CI output | SARIF, JSON, Markdown, badge, GitHub Action | `--ci` exit code and `--json`; SARIF and an Action are not documented in the README |
+| Fix suggestions | Smallest set of servers to remove or move to break each trifecta (exact), and in PRs the servers the change adds | Not documented in the README |
 | Accepting risk | Waivers in `agent.policy.toml`: reason, owner, expiry, exact server set; a PR cannot waive itself | Not documented in the README |
 | Extending | Python entry-point rule plugins | Plugins not documented; the README says it does not accept external contributions |
 | Licence | MIT | Apache-2.0 |
