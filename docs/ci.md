@@ -16,10 +16,22 @@
 | `fail-on` | `high` | Fail at or above this severity |
 | `verify` | `true` | Run `agentaudit verify` when `agent.lock` exists |
 | `sarif-file` | `agentaudit.sarif` | Where the SARIF report is written |
+| `diff` | `true` | On pull requests, compare with the base and report capability changes |
+| `comment` | `true` | Post the diff as one comment, updated in place (needs `pull-requests: write`) |
 | `classify` | `false` | Also run the advisory ML classifier (see [accuracy](classifier)) |
 | `upload-sarif` | `false` | Upload to code scanning (needs `security-events: write`) |
 
 The SARIF report is always written and uploaded even when the scan fails, so findings show up in the Security tab.
+
+## Review what a pull request changes
+
+```bash
+agentaudit diff --base origin/main [--head REF] [--format terminal|markdown|json] [-o file]
+```
+
+The Action runs this on `pull_request` events against the base commit and fails the check when the change introduces a finding at or above `fail-on`, or creates or widens a lethal trifecta. The comment is created only when something changed, and updated in place afterwards. The same report is always written to the job summary, which is the only place it appears for fork PRs (their token is read-only).
+
+Exit codes for `diff`: 0 no new risk, 1 risk introduced, 2 git error (unknown ref, not a repository).
 
 ## Pin what you approved
 

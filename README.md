@@ -60,13 +60,14 @@ name: agentaudit
 on: [push, pull_request]
 permissions:
   contents: read
+  pull-requests: write     # for the pull request comment
   security-events: write   # only needed for upload-sarif
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: AbdulRehman19-bit/agentaudit@v0.2.0
+      - uses: AbdulRehman19-bit/agentaudit@v0.4.0
         with:
           fail-on: high
           upload-sarif: "true"   # shows findings in the Security tab
@@ -75,6 +76,36 @@ jobs:
 The action installs agentaudit from the tagged action source, so the version you pin is the version that runs.
 
 Other report formats: `agentaudit scan --format json|sarif|markdown|badge [-o file]`.
+
+### Review what a pull request changes
+
+A scanner tells you whether your setup is risky now. `agentaudit diff` tells you whether **this change** makes it riskier:
+
+```bash
+agentaudit diff --base origin/main          # compare the working tree with a git ref
+agentaudit diff --base v1.0 --head HEAD     # or two refs
+```
+
+It reads the configs straight from git (nothing is checked out or run) and reports servers added, removed or changed, capabilities gained or lost, tool description changes, findings introduced or resolved, and whether a lethal trifecta is created, widened or removed. It exits 1 if the change adds a finding at or above `--fail-on`, or creates or widens a trifecta.
+
+On pull requests the GitHub Action runs it automatically, writes the report to the job summary, and keeps **one comment** up to date. Real output for a PR that adds a mail server:
+
+> ### NEW lethal trifecta
+>
+> In `.mcp.json`. Servers involved: `mcp:mailer`, `mcp:postgres`, `mcp:web-search`
+>
+> Untrusted input can reach private data and a channel that sends data out. Consider moving one of these servers to a separate agent profile.
+>
+> | Severity | Rule | Where | Message |
+> |---|---|---|---|
+> | high | AA002 | `mcp:mailer` | `Env var SMTP_PASSWORD holds a literal secret in the config; reference it instead` |
+> | medium | AA003 | `mcp:mailer` | `Package mcp-server-smtp is not pinned to a version` |
+>
+> ### Servers added
+>
+> - `mcp:mailer` runs `uvx mcp-server-smtp`; capabilities: `sink via 'smtp'`
+
+Everything that comes from a pull request's files (server names, tool descriptions, arguments) is placed inside code spans or blocks, so a malicious description cannot inject links, HTML or `@mentions` into the comment, and credential-looking arguments are masked. Fork PRs get a read-only token, so for them the job summary is the report.
 
 ### Badge
 
