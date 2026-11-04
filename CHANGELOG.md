@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.1] - 2026-11-04
+
+### Fixed
+Found by hand-checking agentaudit's verdicts against real public configs:
+- AA002 no longer flags obvious placeholders such as `ANTHROPIC_API_KEY_HERE`, `YOUR_OPENAI_API_KEY`, `your-api-key`, `xxxx`, `<token>` or `changeme` as literal secrets. This was a common false positive in example configs.
+- AA003 no longer flags commands that run local project code (`uv run`, `npm run`, `pnpm run`, `yarn run`, `bun run`). Only subcommands that fetch a package are checked (`pnpm dlx`, `npm exec`, `bun x`, `pipx run`, `uv tool run`), and flag values such as `uvx --python 3.12 pkg` are no longer mistaken for the package name.
+- `npx tool` with no version and no `-y` is now a low-severity note about local copies instead of a medium unpinned-package finding.
+- Browser-automation servers (`chrome-devtools`, `selenium`, `seleniumbase`, `webdriver`, `firefox`, `chrome`, `chromium`) are now tagged as untrusted sources and sinks.
+
 ## [0.6.0] - 2026-11-04
 
 ### Added

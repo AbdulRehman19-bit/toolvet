@@ -117,7 +117,7 @@ def analyse(entry: dict) -> dict | None:
         per_server = Counter()
         for f in findings:
             if f.rule_id != "AA100":
-                per_server[(f.rule_id, f.server)] += 1
+                per_server[(f"{f.rule_id}:{f.severity.value}", f.server)] += 1
         trifecta = [f for f in findings if f.rule_id == "AA100"]
         return {
             "repo": entry["repo"],
@@ -162,6 +162,11 @@ def main() -> None:
     parser.add_argument("--max-repos", type=int, default=100)
     parser.add_argument("--max-checked", type=int, default=600)
     parser.add_argument("--pages", type=int, default=3)
+    parser.add_argument(
+        "--reanalyse",
+        type=Path,
+        help="results.jsonl from an earlier run: re-fetch those repos and apply the current rules",
+    )
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     results = args.out / "results.jsonl"
@@ -172,7 +177,13 @@ def main() -> None:
             done[row["repo"]] = row
     print(f"resuming with {len(done)} repos already analysed", flush=True)
 
-    pool = candidates(args.pages)
+    if args.reanalyse:
+        # Recompute with the current rules for repos found earlier; no GitHub search needed.
+        earlier = [json.loads(line) for line in args.reanalyse.read_text("utf-8").splitlines()]
+        pool = [{"repo": r["repo"], "stars": r["stars"], "branch": "HEAD"} for r in earlier]
+        args.max_repos = args.max_checked = len(pool) + 1
+    else:
+        pool = candidates(args.pages)
     print(f"{len(pool)} candidate repos", flush=True)
     checked = 0
     for entry in pool:

@@ -130,7 +130,24 @@ def unpinned_package(server: Server) -> Iterator[Hit]:
     version = spec.rsplit("@", 1)[1] if spec.rfind("@") > 0 else None
     if version is None and "==" in spec:
         version = spec.split("==", 1)[1]
-    if version in (None, "", "latest"):
+    if version not in (None, "", "latest"):
+        return
+    # `npx tool` without -y cannot download in a non-interactive launch (npx would prompt on the
+    # MCP channel), so it only works if the tool is already installed locally, where the
+    # project's lockfile pins it. Still worth knowing about, but not a fetched-latest risk.
+    local_only = (
+        _command_name(server) == "npx"
+        and version is None
+        and not any(arg in ("-y", "--yes") for arg in server.args)
+    )
+    if local_only:
+        yield Hit(
+            Severity.LOW,
+            f"{spec} has no version and no -y: npx will use a locally installed copy if there "
+            "is one (pinned by your lockfile), otherwise it needs a prompt",
+            evidence=[spec],
+        )
+    else:
         yield Hit(Severity.MEDIUM, f"Package {spec} is not pinned to a version", evidence=[spec])
 
 

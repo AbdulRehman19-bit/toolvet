@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: AbdulRehman19-bit/agentaudit@v0.6.0
+      - uses: AbdulRehman19-bit/agentaudit@v0.6.1
         with:
           fail-on: high
           upload-sarif: "true"   # shows findings in the Security tab

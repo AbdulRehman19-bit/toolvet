@@ -109,3 +109,27 @@ def test_python_version_flag_value_is_not_taken_for_the_package():
 def test_browser_automation_servers_are_untrusted_sources_and_sinks(name):
     tags = tag_server(make(name=name, command="node"))
     assert Capability.UNTRUSTED_SOURCE in tags and Capability.SINK in tags
+
+
+@pytest.mark.parametrize(
+    "args", [["nx", "mcp"], ["eslint", "--mcp"], ["tsx", "src/cli.ts"], ["@bytebase/dbhub"]]
+)
+def test_npx_without_dash_y_is_a_low_note_about_local_copies(args):
+    findings = [f for f in run_rules([make(command="npx", args=args)]) if f.rule_id == "AA003"]
+    assert [f.severity.value for f in findings] == ["low"]
+    assert "locally installed copy" in findings[0].message
+
+
+@pytest.mark.parametrize(
+    "command, args",
+    [
+        ("npx", ["-y", "left-pad"]),
+        ("npx", ["--yes", "left-pad"]),
+        ("npx", ["left-pad@latest"]),
+        ("uvx", ["left-pad"]),
+        ("bunx", ["left-pad"]),
+    ],
+)
+def test_fetched_latest_is_still_medium(command, args):
+    findings = [f for f in run_rules([make(command=command, args=args)]) if f.rule_id == "AA003"]
+    assert [f.severity.value for f in findings] == ["medium"]

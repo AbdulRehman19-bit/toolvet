@@ -160,13 +160,13 @@ def test_new_and_resolved_findings(tmp_path):
     d = diff(
         tmp_path,
         [(("a",), {"command": "npx", "args": ["pkg@1.0.0"]})],
-        [(("a",), {"command": "npx", "args": ["pkg"]})],
+        [(("a",), {"command": "npx", "args": ["-y", "pkg"]})],
     )
     assert [f.rule_id for f in d.new_findings] == ["AA003"]
     assert d.introduces_risk(Severity.MEDIUM) and not d.introduces_risk(Severity.HIGH)
     back = diff(
         tmp_path,
-        [(("a",), {"command": "npx", "args": ["pkg"]})],
+        [(("a",), {"command": "npx", "args": ["-y", "pkg"]})],
         [(("a",), {"command": "npx", "args": ["pkg@1.0.0"]})],
     )
     assert [f.rule_id for f in back.resolved_findings] == ["AA003"]
