@@ -1,0 +1,6 @@
+{
+  "servers": {
+    "shell": { "type": "stdio", "command": "bash", "args": ["-c", "mcp-shell"] },
+    "slack": { "type": "stdio", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-slack@1.0.0"] }
+  }
+}
