@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agentaudit.discovery import discover
-from agentaudit.graph import find_trifectas
-from agentaudit.models import Finding, Server
-from agentaudit.rules import Rule, run_rules
-from agentaudit.snapshot import SNAPSHOT_NAME, apply_snapshot
+from toolvet.discovery import discover
+from toolvet.graph import find_trifectas
+from toolvet.models import Finding, Server
+from toolvet.rules import Rule, run_rules
+from toolvet.snapshot import SNAPSHOT_NAME, apply_snapshot
 
 
 def load_servers(path: Path, home: Path | None = None) -> list[Server]:

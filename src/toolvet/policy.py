@@ -4,16 +4,16 @@
     max_waiver_days = 365       # optional cap on how far ahead a waiver may expire
 
     [severity]
-    AA003 = "high"              # raise or lower a rule's severity
+    TV003 = "high"              # raise or lower a rule's severity
 
     [[waiver]]
-    rule = "AA002"
+    rule = "TV002"
     server = "mcp:mailer"       # exact id or glob; "*" must be written explicitly
     reason = "token is a throwaway for a sandbox account"
     owner = "alice"
     expires = 2027-03-01
 
-A trifecta (AA100) waiver lists the exact servers it accepts, and only covers a trifecta whose
+A trifecta (TV100) waiver lists the exact servers it accepts, and only covers a trifecta whose
 servers are all in that list. Adding a server makes the trifecta wider than what was accepted,
 so the waiver stops applying and the finding returns.
 """
@@ -27,13 +27,13 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-from agentaudit.models import Finding, Severity
-from agentaudit.rules import load_rules
+from toolvet.models import Finding, Severity
+from toolvet.rules import load_rules
 
 POLICY_NAME = "agent.policy.toml"
 DEFAULT_MAX_WAIVER_DAYS = 365
 EXPIRY_WARNING_DAYS = 14
-TRIFECTA_RULE = "AA100"
+TRIFECTA_RULE = "TV100"
 KNOWN_KEYS = {"fail_on", "max_waiver_days", "severity", "waiver"}
 WAIVER_KEYS = {"rule", "server", "servers", "tool", "reason", "owner", "expires"}
 

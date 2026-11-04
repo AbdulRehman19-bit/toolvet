@@ -1,7 +1,7 @@
 """agent.tools.json: a saved copy of each server's real tool definitions.
 
 MCP configs only say how to launch a server. Tool names, descriptions and schemas exist at
-runtime, so they are captured by `agentaudit snapshot --introspect` and read from here.
+runtime, so they are captured by `toolvet snapshot --introspect` and read from here.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agentaudit.models import Server, Tool
+from toolvet.models import Server, Tool
 
 SNAPSHOT_NAME = "agent.tools.json"
 

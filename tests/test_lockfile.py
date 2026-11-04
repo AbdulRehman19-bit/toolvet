@@ -3,15 +3,15 @@ from pathlib import Path
 
 import pytest
 
-from agentaudit.lockfile import (
+from toolvet.lockfile import (
     build_lock,
     read_lock,
     tool_hash,
     verify,
     write_lock,
 )
-from agentaudit.models import Server, Tool
-from agentaudit.snapshot import apply_snapshot, load_snapshot, write_snapshot
+from toolvet.models import Server, Tool
+from toolvet.snapshot import apply_snapshot, load_snapshot, write_snapshot
 
 
 def make(name="s", **kw) -> Server:
@@ -94,7 +94,7 @@ def test_write_and_read_roundtrip(tmp_path):
     [
         (None, "cannot read"),
         ("{nope", "not valid JSON"),
-        ('{"servers": 1}', "not an agentaudit lockfile"),
+        ('{"servers": 1}', "not an toolvet lockfile"),
         ('{"version": 9, "servers": {}}', "unsupported version"),
     ],
 )

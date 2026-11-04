@@ -6,8 +6,8 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse
 
-from agentaudit.launch import effective
-from agentaudit.models import Capability, Server
+from toolvet.launch import effective
+from toolvet.models import Capability, Server
 
 S, P, K = Capability.UNTRUSTED_SOURCE, Capability.PRIVATE_DATA, Capability.SINK
 

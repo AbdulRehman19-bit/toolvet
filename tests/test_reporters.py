@@ -4,12 +4,12 @@ from xml.etree import ElementTree
 
 from typer.testing import CliRunner
 
-from agentaudit.audit import audit
-from agentaudit.cli import app
-from agentaudit.discovery import discover
-from agentaudit.models import Finding, Severity, Tool
-from agentaudit.reporters import to_badge, to_json, to_markdown, to_sarif
-from agentaudit.snapshot import write_snapshot
+from toolvet.audit import audit
+from toolvet.cli import app
+from toolvet.discovery import discover
+from toolvet.models import Finding, Severity, Tool
+from toolvet.reporters import to_badge, to_json, to_markdown, to_sarif
+from toolvet.snapshot import write_snapshot
 
 FIXTURES = Path(__file__).parent / "fixtures"
 ROOT = FIXTURES / "claude_desktop"
@@ -24,7 +24,7 @@ def fixture_results():
 def test_json_report_shape_and_order():
     servers, findings = fixture_results()
     report = json.loads(to_json(servers, findings, ROOT))
-    assert report["tool"]["name"] == "agentaudit"
+    assert report["tool"]["name"] == "toolvet"
     assert report["servers"] == sorted(report["servers"])
     severities = [f["severity"] for f in report["findings"]]
     assert severities[0] == "critical"
@@ -37,7 +37,7 @@ def test_sarif_is_valid_shape():
     assert sarif["version"] == "2.1.0"
     run = sarif["runs"][0]
     rule_ids = {r["id"] for r in run["tool"]["driver"]["rules"]}
-    assert {"AA001", "AA010", "AA100"} <= rule_ids
+    assert {"TV001", "TV010", "TV100"} <= rule_ids
     assert run["results"]
     for result in run["results"]:
         assert result["ruleId"] in rule_ids
@@ -54,7 +54,7 @@ def test_sarif_with_no_findings_is_still_valid():
 
 def test_paths_outside_root_become_file_uris():
     finding = Finding(
-        rule_id="AA001",
+        rule_id="TV001",
         severity=Severity.HIGH,
         message="m",
         server="s",
@@ -68,8 +68,8 @@ def test_paths_outside_root_become_file_uris():
 def test_markdown_report():
     servers, findings = fixture_results()
     text = to_markdown(servers, findings)
-    assert text.startswith("# agentaudit report")
-    assert "| critical | AA100 |" in text
+    assert text.startswith("# toolvet report")
+    assert "| critical | TV100 |" in text
     assert "### Trifecta paths" in text
     assert "No findings." in to_markdown([], [])
 
@@ -118,16 +118,16 @@ def test_scan_uses_tool_snapshot_for_description_rules(tmp_path):
     write_snapshot(tmp_path / "agent.tools.json", {"mcp:notes": [evil]})
     result = runner.invoke(app, ["scan", str(tmp_path), "--no-user", "--format", "json"])
     assert result.exit_code == 1
-    assert "AA006" in {f["rule"] for f in json.loads(result.output)["findings"]}
+    assert "TV006" in {f["rule"] for f in json.loads(result.output)["findings"]}
 
 
 def test_advisory_findings_never_fail_scan_or_badge():
-    from agentaudit.cli import _fails
+    from toolvet.cli import _fails
 
     advisory = Finding(
         rule_id="ML001", severity=Severity.CRITICAL, message="m", server="s", advisory=True
     )
-    hard = Finding(rule_id="AA001", severity=Severity.HIGH, message="m", server="s")
+    hard = Finding(rule_id="TV001", severity=Severity.HIGH, message="m", server="s")
     assert not _fails([advisory], Severity.LOW)
     assert _fails([advisory, hard], Severity.HIGH)
     assert "low-risk" in to_badge([advisory])

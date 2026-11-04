@@ -1,6 +1,6 @@
 """Evaluate the shipped ONNX classifier on the held-out sets and write docs/classifier.md.
 
-Metrics are computed with the same runtime code users run (agentaudit.ml.classifier), at
+Metrics are computed with the same runtime code users run (toolvet.ml.classifier), at
 the threshold stored in model.json. The false-positive rate includes a 95% Wilson interval
 because the sets are small.
 
@@ -13,7 +13,7 @@ import json
 import math
 from pathlib import Path
 
-from agentaudit.ml.classifier import Classifier
+from toolvet.ml.classifier import Classifier
 
 ROOT = Path(__file__).parent
 DOCS = ROOT.parent / "docs"
@@ -69,7 +69,7 @@ def main() -> None:
     lines = [
         "# Classifier accuracy",
         "",
-        "agentaudit's optional classifier (`scan --classify`, install `agentaudit[ml]`) flags",
+        "toolvet's optional classifier (`scan --classify`, install `toolvet[ml]`) flags",
         "tool descriptions that look like prompt injection or exfiltration instructions.",
         "It is **advisory**: its findings are labelled as such and never fail CI.",
         "",

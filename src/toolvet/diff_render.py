@@ -3,7 +3,7 @@
 Server names, tool names, descriptions, arguments and URLs all come from files a pull request
 author controls. In Markdown every such value is placed inside a code span or code block, so
 it cannot inject links, images, HTML or @mentions into a PR comment. Credential-looking
-arguments are masked by agentaudit.diff before they reach any renderer.
+arguments are masked by toolvet.diff before they reach any renderer.
 """
 
 from __future__ import annotations
@@ -12,12 +12,12 @@ import json
 import re
 from collections.abc import Callable
 
-from agentaudit.capabilities import tag_server
-from agentaudit.diff import Diff, TrifectaChange, launch_line
-from agentaudit.models import Finding, Server, Severity
-from agentaudit.policy import Waiver
+from toolvet.capabilities import tag_server
+from toolvet.diff import Diff, TrifectaChange, launch_line
+from toolvet.models import Finding, Server, Severity
+from toolvet.policy import Waiver
 
-MARKER = "<!-- agentaudit-diff -->"
+MARKER = "<!-- toolvet-diff -->"
 SPAN_LIMIT = 200
 BLOCK_LIMIT = 600
 
@@ -156,7 +156,7 @@ def to_text(diff: Diff, fail_on: Severity) -> str:
 
 def to_markdown(diff: Diff, fail_on: Severity) -> str:
     risk = diff.introduces_risk(fail_on)
-    lines = [MARKER, "## agentaudit: capability changes", ""]
+    lines = [MARKER, "## toolvet: capability changes", ""]
     if diff.is_empty:
         return "\n".join(lines + ["No capability changes in this pull request.", ""])
     lines.append(

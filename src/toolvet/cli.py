@@ -13,22 +13,22 @@ from rich.markup import escape
 from rich.table import Table
 from rich.text import Text
 
-from agentaudit import __version__
-from agentaudit.audit import audit, load_servers
-from agentaudit.diff import active_policy, compute_diff
-from agentaudit.diff_render import to_json as diff_json
-from agentaudit.diff_render import to_markdown as diff_markdown
-from agentaudit.diff_render import to_text as diff_text
-from agentaudit.discovery import discover
-from agentaudit.gitbase import GitError, materialize
-from agentaudit.graph import build_graph
-from agentaudit.graph_export import to_mermaid, to_svg
-from agentaudit.introspect import IntrospectError, introspect
-from agentaudit.lockfile import LOCK_NAME, LockError, read_lock, write_lock
-from agentaudit.lockfile import verify as verify_lock
-from agentaudit.ml.classifier import Classifier, MLUnavailable, classify_servers
-from agentaudit.models import Finding, Server, Severity
-from agentaudit.policy import (
+from toolvet import __version__
+from toolvet.audit import audit, load_servers
+from toolvet.diff import active_policy, compute_diff
+from toolvet.diff_render import to_json as diff_json
+from toolvet.diff_render import to_markdown as diff_markdown
+from toolvet.diff_render import to_text as diff_text
+from toolvet.discovery import discover
+from toolvet.gitbase import GitError, materialize
+from toolvet.graph import build_graph
+from toolvet.graph_export import to_mermaid, to_svg
+from toolvet.introspect import IntrospectError, introspect
+from toolvet.lockfile import LOCK_NAME, LockError, read_lock, write_lock
+from toolvet.lockfile import verify as verify_lock
+from toolvet.ml.classifier import Classifier, MLUnavailable, classify_servers
+from toolvet.models import Finding, Server, Severity
+from toolvet.policy import (
     POLICY_NAME,
     Policy,
     PolicyError,
@@ -36,8 +36,8 @@ from agentaudit.policy import (
     load_policy,
     policy_problems,
 )
-from agentaudit.reporters import to_badge, to_json, to_markdown, to_sarif
-from agentaudit.snapshot import SNAPSHOT_NAME, apply_snapshot, write_snapshot
+from toolvet.reporters import to_badge, to_json, to_markdown, to_sarif
+from toolvet.snapshot import SNAPSHOT_NAME, apply_snapshot, write_snapshot
 
 app = typer.Typer(help="Audit AI agent tool (MCP) configurations.", no_args_is_help=True)
 # emoji=False: names like `mcp:notes:time` contain `:notes:`, which Rich would render as an
@@ -56,7 +56,7 @@ _STYLES = {
 
 def _version(value: bool) -> None:
     if value:
-        typer.echo(f"agentaudit {__version__}")
+        typer.echo(f"toolvet {__version__}")
         raise typer.Exit()
 
 
@@ -66,7 +66,7 @@ def main(
         bool, typer.Option("--version", callback=_version, is_eager=True, help="Show version.")
     ] = False,
 ) -> None:
-    """agentaudit: find dangerous tool combinations and pin what was approved."""
+    """toolvet: find dangerous tool combinations and pin what was approved."""
 
 
 def counts(finding: Finding) -> bool:
@@ -88,7 +88,7 @@ def _findings_table(findings: list[Finding]) -> Table:
         style = _STYLES[f.severity]
         where = f"{f.server}:{f.tool}" if f.tool else f.server
         message = f.message
-        if f.rule_id == "AA100":
+        if f.rule_id == "TV100":
             message += "\n" + "\n".join(f"  {line}" for line in f.evidence)
         if f.fix and not f.waiver:
             message += "\n  Smallest fixes:" + "".join(f"\n    - {line}" for line in f.fix)
@@ -141,7 +141,7 @@ def _audit(servers: list[Server], classify: bool, policy: Policy) -> list[Findin
         raise typer.Exit(2) from exc
     if not any(t.description.strip() for s in servers for t in s.tools):
         err_console.print(
-            "[yellow]No tool descriptions to classify. Run `agentaudit snapshot --introspect` "
+            "[yellow]No tool descriptions to classify. Run `toolvet snapshot --introspect` "
             "to record them.[/]"
         )
     return apply_policy([*findings, *classify_servers(servers, classifier)], policy)
@@ -199,7 +199,7 @@ def scan(
         typer.Option(
             "--classify",
             help="Also score tool descriptions with the local ML classifier (advisory only; "
-            "needs agentaudit[ml]).",
+            "needs toolvet[ml]).",
         ),
     ] = False,
 ) -> None:
@@ -263,7 +263,7 @@ def lock(
     if with_tools < len(servers):
         console.print(
             f"[yellow]Tool descriptions are not pinned for {len(servers) - with_tools} server(s);"
-            " run `agentaudit snapshot --introspect` first to pin them.[/]"
+            " run `toolvet snapshot --introspect` first to pin them.[/]"
         )
 
 
@@ -335,7 +335,7 @@ def snapshot(
             console.print(f"{escape(s.id)}: {len(tools_by_server[s.id])} tool(s)")
     if tools_by_server:
         write_snapshot(path / SNAPSHOT_NAME, tools_by_server)
-        console.print(f"Wrote {SNAPSHOT_NAME}. Run `agentaudit lock` to pin it.")
+        console.print(f"Wrote {SNAPSHOT_NAME}. Run `toolvet lock` to pin it.")
     if failed:
         raise typer.Exit(1)
 

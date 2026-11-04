@@ -7,12 +7,12 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agentaudit.audit import audit
-from agentaudit.capabilities import tag_server
-from agentaudit.fixes import FixOption, has_trifecta, trifecta_fixes
-from agentaudit.models import Finding, Server, Severity
-from agentaudit.policy import Policy, Waiver, apply_policy
-from agentaudit.rules.builtin import _CRED_FLAG, _CRED_URL
+from toolvet.audit import audit
+from toolvet.capabilities import tag_server
+from toolvet.fixes import FixOption, has_trifecta, trifecta_fixes
+from toolvet.models import Finding, Server, Severity
+from toolvet.policy import Policy, Waiver, apply_policy
+from toolvet.rules.builtin import _CRED_FLAG, _CRED_URL
 
 _URL_PASSWORD = re.compile(r"(://[^/@\s:]+:)[^/@\s]+(@)")
 
@@ -159,7 +159,7 @@ def _trifectas(
     def collect(findings: list[Finding], root: Path) -> dict[str, tuple[set[str], dict | None]]:
         found: dict[str, tuple[set[str], dict | None]] = {}
         for f in findings:
-            if f.rule_id == "AA100":
+            if f.rule_id == "TV100":
                 name = _config_name(f, root)
                 servers, waiver = found.get(name, (set(), f.waiver))
                 # A scope counts as accepted only if every trifecta finding in it is waived.
@@ -280,8 +280,8 @@ def compute_diff(
 
     base_findings = apply_policy(audit(base), active)
     head_findings = apply_policy(audit(head), active)
-    base_keys = {_key(f) for f in base_findings if f.rule_id != "AA100"}
-    head_keys = {_key(f) for f in head_findings if f.rule_id != "AA100"}
+    base_keys = {_key(f) for f in base_findings if f.rule_id != "TV100"}
+    head_keys = {_key(f) for f in head_findings if f.rule_id != "TV100"}
     trifectas = _trifectas(base_findings, head_findings, base_root, head_root)
     _suggest_fixes(
         trifectas, head, [new[sid] for sid in sorted(new.keys() - old.keys())], head_root
@@ -293,10 +293,10 @@ def compute_diff(
         capabilities=capabilities,
         tools=tools,
         new_findings=[
-            f for f in head_findings if f.rule_id != "AA100" and _key(f) not in base_keys
+            f for f in head_findings if f.rule_id != "TV100" and _key(f) not in base_keys
         ],
         resolved_findings=[
-            f for f in base_findings if f.rule_id != "AA100" and _key(f) not in head_keys
+            f for f in base_findings if f.rule_id != "TV100" and _key(f) not in head_keys
         ],
         trifectas=trifectas,
         policy=policy_change(base_policy, head_policy),

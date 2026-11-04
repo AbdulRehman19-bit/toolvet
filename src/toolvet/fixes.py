@@ -14,8 +14,8 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from agentaudit.capabilities import tag_server
-from agentaudit.models import Capability, Server
+from toolvet.capabilities import tag_server
+from toolvet.models import Capability, Server
 
 S, P, K = Capability.UNTRUSTED_SOURCE, Capability.PRIVATE_DATA, Capability.SINK
 LAYERS = (S, P, K)

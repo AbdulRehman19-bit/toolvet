@@ -1,14 +1,14 @@
 # Research scan
 
 `scan_public.py` measures how often popular public repos commit risky MCP configurations,
-using agentaudit's own rules. It backs the aggregate numbers in launch material.
+using toolvet's own rules. It backs the aggregate numbers in launch material.
 
 ## Method
 
 1. Search GitHub for non-fork, non-archived repos on agent and MCP topics, sorted by stars.
 2. Walk them in star order and keep the first N that commit an MCP config
    (`.mcp.json`, `.cursor/mcp.json` or `.vscode/mcp.json`).
-3. Parse and audit each config with agentaudit in a temporary directory, then delete it.
+3. Parse and audit each config with toolvet in a temporary directory, then delete it.
    Nothing is executed; configs are only read as JSON.
 4. Record counts only: servers, which rules fired, whether a trifecta was found.
 

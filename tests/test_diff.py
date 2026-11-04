@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from agentaudit.diff import compute_diff, launch_line, mask_args
-from agentaudit.gitbase import GitError, materialize, resolve_ref
-from agentaudit.models import Server, Severity, Tool
+from toolvet.diff import compute_diff, launch_line, mask_args
+from toolvet.gitbase import GitError, materialize, resolve_ref
+from toolvet.models import Server, Severity, Tool
 
 
 def git(repo: Path, *args: str) -> None:
@@ -162,20 +162,20 @@ def test_new_and_resolved_findings(tmp_path):
         [(("a",), {"command": "npx", "args": ["pkg@1.0.0"]})],
         [(("a",), {"command": "npx", "args": ["-y", "pkg"]})],
     )
-    assert [f.rule_id for f in d.new_findings] == ["AA003"]
+    assert [f.rule_id for f in d.new_findings] == ["TV003"]
     assert d.introduces_risk(Severity.MEDIUM) and not d.introduces_risk(Severity.HIGH)
     back = diff(
         tmp_path,
         [(("a",), {"command": "npx", "args": ["-y", "pkg"]})],
         [(("a",), {"command": "npx", "args": ["pkg@1.0.0"]})],
     )
-    assert [f.rule_id for f in back.resolved_findings] == ["AA003"]
+    assert [f.rule_id for f in back.resolved_findings] == ["TV003"]
     assert not back.introduces_risk(Severity.LOW)
 
 
 def test_advisory_findings_do_not_count_as_risk(tmp_path):
     d = diff(tmp_path, [(("a",), {})], [(("a",), {})])
-    from agentaudit.models import Finding
+    from toolvet.models import Finding
 
     d.new_findings.append(
         Finding(rule_id="ML001", severity=Severity.CRITICAL, message="m", server="s", advisory=True)

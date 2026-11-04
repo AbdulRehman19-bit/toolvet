@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from agentaudit.introspect import IntrospectError, introspect
-from agentaudit.models import Server
+from toolvet.introspect import IntrospectError, introspect
+from toolvet.models import Server
 
 FAKE = str(Path(__file__).parent / "fake_mcp_server.py")
 
@@ -61,7 +61,7 @@ def test_non_stdio_and_missing_commands():
 
 def test_env_placeholders_do_not_override_real_environment(monkeypatch):
     monkeypatch.setenv("REAL_VAR", "kept")
-    from agentaudit.introspect import _launch_env
+    from toolvet.introspect import _launch_env
 
     env = _launch_env(fake("ok", env={"REAL_VAR": "${env:REAL_VAR}", "NEW": "1", "EMPTY": ""}))
     assert env["REAL_VAR"] == "kept"

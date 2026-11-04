@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from agentaudit.models import Server, Tool
+from toolvet.models import Server, Tool
 
 # client -> (config path relative to a root, key holding the server map)
 _PROJECT_CONFIGS = {

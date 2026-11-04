@@ -1,7 +1,7 @@
 """Opt-in introspection: launch an MCP stdio server and ask it for its tools.
 
 This runs the server's configured command, exactly as the user's own client would. It is
-not a sandbox. `scan` never calls this; only `agentaudit snapshot --introspect` does.
+not a sandbox. `scan` never calls this; only `toolvet snapshot --introspect` does.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import threading
 import time
 from typing import Any
 
-from agentaudit.models import Server, Tool
+from toolvet.models import Server, Tool
 
 PROTOCOL_VERSION = "2025-06-18"
 MAX_PAGES = 50
@@ -112,7 +112,7 @@ def introspect(server: Server, timeout: float = 30.0) -> list[Tool]:
             {
                 "protocolVersion": PROTOCOL_VERSION,
                 "capabilities": {},
-                "clientInfo": {"name": "agentaudit", "version": "0"},
+                "clientInfo": {"name": "toolvet", "version": "0"},
             },
         )
         session.notify("notifications/initialized")

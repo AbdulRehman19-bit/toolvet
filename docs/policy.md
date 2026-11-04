@@ -7,17 +7,17 @@ fail_on = "high"          # default for `scan` and `diff`
 max_waiver_days = 180     # waivers may not expire further ahead than this (default 365)
 
 [severity]
-AA003 = "high"            # unpinned packages are not acceptable here
+TV003 = "high"            # unpinned packages are not acceptable here
 
 [[waiver]]
-rule = "AA002"
+rule = "TV002"
 server = "mcp:mailer"     # exact id or a glob; write "*" explicitly to cover everything
 reason = "token belongs to a throwaway sandbox account"
 owner = "alice"
 expires = 2027-03-01
 
 [[waiver]]
-rule = "AA100"            # lethal trifecta: list exactly the servers you reviewed
+rule = "TV100"            # lethal trifecta: list exactly the servers you reviewed
 servers = ["mcp:fetch", "mcp:filesystem", "mcp:github"]
 reason = "agent runs in a container with no real data mounted"
 owner = "bob"
@@ -35,7 +35,7 @@ A waiver system that is easy to abuse becomes a way to switch the tool off. So:
 
 ## A change cannot waive its own risk
 
-On pull requests, `agentaudit diff` applies the policy from the **base** branch. A PR that adds a risky server and also adds a waiver for it in the same change still fails, and the comment lists the new waiver for reviewers with a note that it is not applied. Once a reviewer approves and merges the waiver, it takes effect for later changes.
+On pull requests, `toolvet diff` applies the policy from the **base** branch. A PR that adds a risky server and also adds a waiver for it in the same change still fails, and the comment lists the new waiver for reviewers with a note that it is not applied. Once a reviewer approves and merges the waiver, it takes effect for later changes.
 
 In practice this is two small pull requests: one that adds the waiver (the check passes because nothing risky changed), then one that adds the server.
 
@@ -44,8 +44,8 @@ If your team protects `agent.policy.toml` with CODEOWNERS and wants one-step cha
 ## Keeping the policy healthy
 
 ```bash
-agentaudit policy check            # lists waivers; exit 1 if any has expired
-agentaudit policy check --strict   # also fail on waivers expiring within 14 days or matching nothing
+toolvet policy check            # lists waivers; exit 1 if any has expired
+toolvet policy check --strict   # also fail on waivers expiring within 14 days or matching nothing
 ```
 
 `scan` also prints a note for expired, soon-to-expire and unused waivers. Remove unused waivers: they hide nothing today but would silently cover a future finding.

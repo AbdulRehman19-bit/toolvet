@@ -1,15 +1,15 @@
 """Regression tests for false positives and negatives found by hand-checking a real-world scan.
 
-Each case is a pattern seen in real public configs where agentaudit was wrong.
+Each case is a pattern seen in real public configs where toolvet was wrong.
 """
 
 from pathlib import Path
 
 import pytest
 
-from agentaudit.capabilities import tag_server
-from agentaudit.models import Capability, Server
-from agentaudit.rules import run_rules
+from toolvet.capabilities import tag_server
+from toolvet.models import Capability, Server
+from toolvet.rules import run_rules
 
 
 def make(name="s", **kw) -> Server:
@@ -44,7 +44,7 @@ def rules(server: Server) -> set[str]:
     ],
 )
 def test_placeholder_values_are_not_secrets(value):
-    assert "AA002" not in rules(make(env={"API_KEY": value}))
+    assert "TV002" not in rules(make(env={"API_KEY": value}))
 
 
 @pytest.mark.parametrize(
@@ -52,12 +52,12 @@ def test_placeholder_values_are_not_secrets(value):
     ["ghp_16C7e42F292c6912E7710c838347Ae178B4a", "s3cr3tvalue", "hunter2", "AKIAIOSFODNN7EXAMPLE1"],
 )
 def test_real_looking_values_are_still_flagged(value):
-    assert "AA002" in rules(make(env={"API_KEY": value}))
+    assert "TV002" in rules(make(env={"API_KEY": value}))
 
 
 def test_placeholder_credential_flag_value_is_not_a_secret():
-    assert "AA008" not in rules(make(command="x", args=["--token", "YOUR_TOKEN_HERE"]))
-    assert "AA008" in rules(make(command="x", args=["--token", "abc123def456"]))
+    assert "TV008" not in rules(make(command="x", args=["--token", "YOUR_TOKEN_HERE"]))
+    assert "TV008" in rules(make(command="x", args=["--token", "abc123def456"]))
 
 
 @pytest.mark.parametrize(
@@ -75,7 +75,7 @@ def test_placeholder_credential_flag_value_is_not_a_secret():
     ],
 )
 def test_running_local_code_is_not_an_unpinned_package(command, args):
-    assert "AA003" not in rules(make(command=command, args=args))
+    assert "TV003" not in rules(make(command=command, args=args))
 
 
 @pytest.mark.parametrize(
@@ -94,15 +94,15 @@ def test_running_local_code_is_not_an_unpinned_package(command, args):
     ],
 )
 def test_fetching_runners_are_still_checked(command, args):
-    assert "AA003" in rules(make(command=command, args=args))
+    assert "TV003" in rules(make(command=command, args=args))
 
 
 def test_python_version_flag_value_is_not_taken_for_the_package():
-    from agentaudit.rules.builtin import _package_spec
+    from toolvet.rules.builtin import _package_spec
 
     server = make(command="uvx", args=["--python", "3.12", "--with", "extra", "real-pkg@1.0.0"])
     assert _package_spec(server) == "real-pkg@1.0.0"
-    assert "AA003" not in rules(server)
+    assert "TV003" not in rules(server)
 
 
 @pytest.mark.parametrize("name", ["chrome-devtools", "seleniumbase-mcp", "firefox", "webdriver"])
@@ -115,7 +115,7 @@ def test_browser_automation_servers_are_untrusted_sources_and_sinks(name):
     "args", [["nx", "mcp"], ["eslint", "--mcp"], ["tsx", "src/cli.ts"], ["@bytebase/dbhub"]]
 )
 def test_npx_without_dash_y_is_a_low_note_about_local_copies(args):
-    findings = [f for f in run_rules([make(command="npx", args=args)]) if f.rule_id == "AA003"]
+    findings = [f for f in run_rules([make(command="npx", args=args)]) if f.rule_id == "TV003"]
     assert [f.severity.value for f in findings] == ["low"]
     assert "locally installed copy" in findings[0].message
 
@@ -131,5 +131,5 @@ def test_npx_without_dash_y_is_a_low_note_about_local_copies(args):
     ],
 )
 def test_fetched_latest_is_still_medium(command, args):
-    findings = [f for f in run_rules([make(command=command, args=args)]) if f.rule_id == "AA003"]
+    findings = [f for f in run_rules([make(command=command, args=args)]) if f.rule_id == "TV003"]
     assert [f.severity.value for f in findings] == ["medium"]

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from agentaudit.cli import app
+from toolvet.cli import app
 
 runner = CliRunner()
 EXPIRES = (date.today() + timedelta(days=90)).isoformat()
@@ -41,12 +41,12 @@ def commit(repo: Path, message: str = "c") -> None:
 def trifecta_waiver(*names: str) -> str:
     listed = ", ".join(f'"mcp:{n}"' for n in names)
     return (
-        f'\n[[waiver]]\nrule = "AA100"\nservers = [{listed}]\n'
+        f'\n[[waiver]]\nrule = "TV100"\nservers = [{listed}]\n'
         f'reason = "runs in a sandbox"\nowner = "alice"\nexpires = {EXPIRES}\n'
     )
 
 
-def finding_waiver(server: str, rule: str = "AA002") -> str:
+def finding_waiver(server: str, rule: str = "TV002") -> str:
     return (
         f'\n[[waiver]]\nrule = "{rule}"\nserver = "{server}"\nreason = "throwaway token"\n'
         f'owner = "bob"\nexpires = {EXPIRES}\n'
@@ -194,11 +194,11 @@ def test_policy_fail_on_from_the_base_branch_is_the_default(repo):
 
 
 def test_policy_edits_are_reported_for_review(repo):
-    write(repo, servers("search", "postgres"), 'fail_on = "critical"\n[severity]\nAA003 = "low"\n')
+    write(repo, servers("search", "postgres"), 'fail_on = "critical"\n[severity]\nTV003 = "low"\n')
     result = run(repo, "--format", "json")
     data = json.loads(result.output)
     notes = " ".join(data["policy"]["notes"])
-    assert "severity AA003: default -> low" in notes and "fail_on: unset -> critical" in notes
+    assert "severity TV003: default -> low" in notes and "fail_on: unset -> critical" in notes
     assert data["policy"]["mode"] == "base"
 
 
@@ -218,7 +218,7 @@ def test_invalid_policy_in_the_change_exits_2(repo):
 
 def test_markdown_comment_warns_reviewers_and_stays_safe(repo):
     hostile = (
-        '\n[[waiver]]\nrule = "AA002"\nserver = "@octocat `x`"\n'
+        '\n[[waiver]]\nrule = "TV002"\nserver = "@octocat `x`"\n'
         'reason = "see [click](http://evil.example) <img src=x>"\nowner = "@evil"\n'
         f"expires = {EXPIRES}\n"
     )

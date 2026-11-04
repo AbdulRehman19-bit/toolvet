@@ -4,7 +4,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from agentaudit.cli import app
+from toolvet.cli import app
 
 runner = CliRunner()
 
@@ -27,7 +27,7 @@ def scan(path: Path, *args: str):
 SECRET = {"mailer": {"command": "node", "env": {"SMTP_PASSWORD": "hunter2"}}}
 
 
-def waiver(rule="AA002", server="mcp:mailer", days=90, extra="") -> str:
+def waiver(rule="TV002", server="mcp:mailer", days=90, extra="") -> str:
     return (
         f'\n[[waiver]]\nrule = "{rule}"\nserver = "{server}"\nreason = "sandbox account"\n'
         f'owner = "alice"\nexpires = {iso(days)}\n{extra}'
@@ -75,7 +75,7 @@ def trifecta_servers(*extra: str) -> dict:
 
 
 TRIFECTA = (
-    '\n[[waiver]]\nrule = "AA100"\nservers = ["mcp:postgres", "mcp:search", "mcp:smtp"]\n'
+    '\n[[waiver]]\nrule = "TV100"\nservers = ["mcp:postgres", "mcp:search", "mcp:smtp"]\n'
     f'reason = "all three run in a sandbox"\nowner = "alice"\nexpires = {iso(90)}\n'
 )
 
@@ -93,7 +93,7 @@ def test_widening_a_waived_trifecta_fails_again(tmp_path):
 
 
 def test_invalid_policy_exits_2_and_lists_every_problem(tmp_path):
-    bad = 'fail_on = "loud"\n[[waiver]]\nrule = "AA002"\nserver = "x"\nreason = ""\nowner = ""\n'
+    bad = 'fail_on = "loud"\n[[waiver]]\nrule = "TV002"\nserver = "x"\nreason = ""\nowner = ""\n'
     result = scan(repo(tmp_path, SECRET, bad))
     assert result.exit_code == 2
     for problem in ("fail_on", "reason is required", "owner is required", "expires is required"):
@@ -101,7 +101,7 @@ def test_invalid_policy_exits_2_and_lists_every_problem(tmp_path):
 
 
 def test_policy_fail_on_is_the_default_and_the_flag_overrides_it(tmp_path):
-    servers = {"pkg": {"command": "npx", "args": ["-y", "left-pad"]}}  # AA003, medium
+    servers = {"pkg": {"command": "npx", "args": ["-y", "left-pad"]}}  # TV003, medium
     path = repo(tmp_path, servers, 'fail_on = "medium"\n')
     assert scan(path).exit_code == 1
     assert scan(path, "--fail-on", "high").exit_code == 0
@@ -112,7 +112,7 @@ def test_policy_fail_on_is_the_default_and_the_flag_overrides_it(tmp_path):
 
 def test_severity_override_changes_the_outcome(tmp_path):
     servers = {"pkg": {"command": "npx", "args": ["-y", "left-pad"]}}
-    path = repo(tmp_path, servers, '[severity]\nAA003 = "high"\n')
+    path = repo(tmp_path, servers, '[severity]\nTV003 = "high"\n')
     assert scan(path).exit_code == 1
 
 

@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from agentaudit.fixes import FixOption, has_trifecta, layers_of, trifecta_fixes
-from agentaudit.graph import find_trifectas
-from agentaudit.models import Capability, Server
+from toolvet.fixes import FixOption, has_trifecta, layers_of, trifecta_fixes
+from toolvet.graph import find_trifectas
+from toolvet.models import Capability, Server
 
 # keywords that tag each capability combination in the lookup table
 POOL = [

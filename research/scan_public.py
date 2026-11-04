@@ -2,7 +2,7 @@
 
 Method: search GitHub for repos on agent/MCP topics, sort by stars, and keep the first N that
 commit an MCP config (.mcp.json, .cursor/mcp.json, .vscode/mcp.json). Each config is parsed
-and audited with agentaudit itself, entirely offline once downloaded. Nothing is executed.
+and audited with toolvet itself, entirely offline once downloaded. Nothing is executed.
 
 Ethics (see research/README.md):
 - Per-repo results are written to a LOCAL file you choose and must not be published.
@@ -27,8 +27,8 @@ import urllib.request
 from collections import Counter
 from pathlib import Path
 
-from agentaudit.audit import audit
-from agentaudit.discovery import discover
+from toolvet.audit import audit
+from toolvet.discovery import discover
 
 TOPICS = [
     "mcp-server",
@@ -42,7 +42,7 @@ TOPICS = [
 ]
 CONFIG_PATHS = [".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json"]
 MAX_BYTES = 200_000
-USER_AGENT = "agentaudit-research (+https://github.com/AbdulRehman19-bit/agentaudit)"
+USER_AGENT = "toolvet-research (+https://github.com/AbdulRehman19-bit/toolvet)"
 
 
 def fetch(url: str, retries: int = 3, limit: int = MAX_BYTES + 1) -> tuple[int, bytes]:
@@ -116,9 +116,9 @@ def analyse(entry: dict) -> dict | None:
         findings = audit(servers)
         per_server = Counter()
         for f in findings:
-            if f.rule_id != "AA100":
+            if f.rule_id != "TV100":
                 per_server[(f"{f.rule_id}:{f.severity.value}", f.server)] += 1
-        trifecta = [f for f in findings if f.rule_id == "AA100"]
+        trifecta = [f for f in findings if f.rule_id == "TV100"]
         return {
             "repo": entry["repo"],
             "stars": entry["stars"],

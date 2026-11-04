@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from agentaudit.discovery import discover, parse_config
+from toolvet.discovery import discover, parse_config
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

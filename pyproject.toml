@@ -1,6 +1,6 @@
 [project]
-name = "agentaudit"
-version = "0.6.3"
+name = "toolvet"
+version = "0.7.0"
 description = "Find dangerous combinations of AI agent tools before attackers do, and pin what was approved."
 readme = "README.md"
 license = "MIT"
@@ -30,19 +30,19 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/AbdulRehman19-bit/agentaudit"
-Repository = "https://github.com/AbdulRehman19-bit/agentaudit"
-Issues = "https://github.com/AbdulRehman19-bit/agentaudit/issues"
-Changelog = "https://github.com/AbdulRehman19-bit/agentaudit/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/AbdulRehman19-bit/agentaudit/tree/main/docs"
+Homepage = "https://github.com/AbdulRehman19-bit/toolvet"
+Repository = "https://github.com/AbdulRehman19-bit/toolvet"
+Issues = "https://github.com/AbdulRehman19-bit/toolvet/issues"
+Changelog = "https://github.com/AbdulRehman19-bit/toolvet/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/AbdulRehman19-bit/toolvet/tree/main/docs"
 
 [project.scripts]
-agentaudit = "agentaudit.cli:app"
+toolvet = "toolvet.cli:app"
 
 [project.optional-dependencies]
 ml = ["onnxruntime>=1.17", "numpy>=1.26"]
 
-[project.entry-points."agentaudit.rules"]
+[project.entry-points."toolvet.rules"]
 # Third-party packages register rules in this group; built-ins load directly.
 
 [dependency-groups]
@@ -62,11 +62,11 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/agentaudit"]
+packages = ["src/toolvet"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=agentaudit --cov-report=term-missing"
+addopts = "--cov=toolvet --cov-report=term-missing"
 
 [tool.ruff]
 line-length = 100

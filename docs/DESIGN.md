@@ -1,6 +1,8 @@
-# agentaudit design notes
+# toolvet design notes
 
-Source of truth: `agentaudit - Project Proposal.pdf`. This file records decisions that refine it.
+Source of truth: the original project proposal (kept locally, not published; it was written
+before the project was renamed from `agentaudit` to `toolvet`). This file records decisions
+that refine it.
 
 ## Resolved gaps
 
@@ -9,15 +11,15 @@ Client configs say how to launch a server, not what tools it exposes. Tool names
 descriptions and schemas exist only at runtime, so rug-pull detection needs them.
 
 Decision:
-- `agentaudit scan` stays fully offline and never executes anything. Capability tags
+- `toolvet scan` stays fully offline and never executes anything. Capability tags
   come from a fixed lookup table over server name, command and args (no inference).
-- `agentaudit snapshot --introspect` is an explicit opt-in. It launches each configured
+- `toolvet snapshot --introspect` is an explicit opt-in. It launches each configured
   server over stdio, sends `initialize` and `tools/list`, and writes `agent.tools.json`.
   The user already runs these servers in their client; the command prints exactly what
   it will launch and asks for confirmation (`--yes` for CI).
-- `agentaudit lock` hashes the server definition (command, args, env keys, url) and,
+- `toolvet lock` hashes the server definition (command, args, env keys, url) and,
   when `agent.tools.json` exists, every tool's name, description and schema.
-- `agentaudit verify` fails on any added, removed or changed server or tool.
+- `toolvet verify` fails on any added, removed or changed server or tool.
 - Sandboxed execution is still v0.4; introspection is not a sandbox.
 
 ### 2. Launch timeline vs 30-day disclosure
@@ -42,4 +44,10 @@ that other scanners miss cross-server combinations.
 ### 4. Open questions closed
 - Licence: MIT.
 - First three clients: Claude Desktop, Cursor, VS Code.
-- Name: `agentaudit` is free on PyPI (checked 2026-11-04).
+- Name: the project started as `agentaudit`. PyPI rejected that name on 2026-11-04 as too
+  similar to the active project `agent-audit` (PyPI treats names that differ only by `-`, `_`
+  or `.` as the same, and an exact-name lookup does not reveal that). It was renamed to
+  `toolvet`, which was free on PyPI (exact and separator variants) and had no established
+  GitHub project of that name. Rule ids moved from `AA###` to `TV###` at the same time.
+  Lesson for any future name check: test separator variants and search GitHub, not just
+  the exact PyPI name.

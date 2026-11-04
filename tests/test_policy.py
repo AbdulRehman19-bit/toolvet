@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from agentaudit.models import Finding, Severity
-from agentaudit.policy import (
+from toolvet.models import Finding, Severity
+from toolvet.policy import (
     Policy,
     PolicyError,
     Waiver,
@@ -15,19 +15,19 @@ from agentaudit.policy import (
     parse_policy,
     policy_problems,
 )
-from agentaudit.reporters import to_badge, to_json, to_markdown, to_sarif
+from toolvet.reporters import to_badge, to_json, to_markdown, to_sarif
 
 TODAY = date(2026, 11, 4)
 FUTURE = (TODAY + timedelta(days=90)).isoformat()
 
 
-def finding(rule="AA002", server="mcp:mailer", tool=None, severity=Severity.HIGH) -> Finding:
+def finding(rule="TV002", server="mcp:mailer", tool=None, severity=Severity.HIGH) -> Finding:
     return Finding(rule_id=rule, severity=severity, message="m", server=server, tool=tool)
 
 
 def waiver(**kw) -> dict:
     base = {
-        "rule": "AA002",
+        "rule": "TV002",
         "server": "mcp:mailer",
         "reason": "sandbox token",
         "owner": "alice",
@@ -55,11 +55,11 @@ def test_full_policy_parses():
     policy = parse(
         fail_on="medium",
         max_waiver_days=30,
-        severity={"AA003": "high"},
+        severity={"TV003": "high"},
         waiver=[waiver(expires=(TODAY + timedelta(days=20)).isoformat())],
     )
     assert policy.fail_on is Severity.MEDIUM
-    assert policy.severity == {"AA003": Severity.HIGH}
+    assert policy.severity == {"TV003": Severity.HIGH}
     assert policy.waivers[0].owner == "alice" and policy.max_waiver_days == 30
 
 
@@ -69,23 +69,23 @@ def test_full_policy_parses():
         ({"nope": 1}, "unknown key 'nope'"),
         ({"fail_on": "severe"}, "fail_on"),
         ({"max_waiver_days": 0}, "max_waiver_days"),
-        ({"severity": {"AA999": "high"}}, "unknown rule 'AA999'"),
-        ({"severity": {"AA003": "loud"}}, "not a severity"),
+        ({"severity": {"TV999": "high"}}, "unknown rule 'TV999'"),
+        ({"severity": {"TV003": "loud"}}, "not a severity"),
         ({"waiver": [waiver(reason="  ")]}, "reason is required"),
         ({"waiver": [waiver(owner="")]}, "owner is required"),
         ({"waiver": [waiver(expires=None)]}, "expires is required"),
         ({"waiver": [waiver(expires="soon")]}, "expires is required"),
-        ({"waiver": [waiver(rule="AA777")]}, "unknown or missing rule"),
+        ({"waiver": [waiver(rule="TV777")]}, "unknown or missing rule"),
         ({"waiver": [waiver(server=None)]}, "server is required"),
         ({"waiver": [waiver(color="red")]}, "unknown key 'color'"),
-        ({"waiver": [waiver(servers=["x"])]}, "servers is only for AA100"),
-        ({"waiver": [waiver(rule="AA100")]}, "must list the exact servers"),
+        ({"waiver": [waiver(servers=["x"])]}, "servers is only for TV100"),
+        ({"waiver": [waiver(rule="TV100")]}, "must list the exact servers"),
         (
-            {"waiver": [waiver(rule="AA100", server=None, servers=[])]},
+            {"waiver": [waiver(rule="TV100", server=None, servers=[])]},
             "must list the exact servers",
         ),
         ({"waiver": ["text"]}, "must be a table"),
-        ({"waiver": {"rule": "AA002"}}, r"\[\[waiver\]\]"),
+        ({"waiver": {"rule": "TV002"}}, r"\[\[waiver\]\]"),
     ],
 )
 def test_invalid_policies_are_rejected_with_a_clear_message(data, message):
@@ -107,7 +107,7 @@ def test_trifecta_waiver_with_server_key_is_rejected():
     text = errors_of(
         waiver=[
             {
-                "rule": "AA100",
+                "rule": "TV100",
                 "server": "a",
                 "servers": ["a"],
                 "reason": "r",
@@ -123,7 +123,7 @@ def trifecta_waiver(*servers) -> Waiver:
     policy = parse(
         waiver=[
             {
-                "rule": "AA100",
+                "rule": "TV100",
                 "servers": list(servers),
                 "reason": "sandboxed",
                 "owner": "alice",
@@ -136,9 +136,9 @@ def trifecta_waiver(*servers) -> Waiver:
 
 def test_trifecta_waiver_covers_only_the_accepted_servers():
     w = trifecta_waiver("mcp:fetch", "mcp:fs", "mcp:mail")
-    assert matches(w, finding("AA100", "mcp:fetch, mcp:fs, mcp:mail"))
-    assert matches(w, finding("AA100", "mcp:fetch, mcp:fs"))  # narrower is still accepted
-    assert not matches(w, finding("AA100", "mcp:fetch, mcp:fs, mcp:mail, mcp:slack"))  # widened
+    assert matches(w, finding("TV100", "mcp:fetch, mcp:fs, mcp:mail"))
+    assert matches(w, finding("TV100", "mcp:fetch, mcp:fs"))  # narrower is still accepted
+    assert not matches(w, finding("TV100", "mcp:fetch, mcp:fs, mcp:mail, mcp:slack"))  # widened
 
 
 def test_matching_by_server_glob_and_tool():
@@ -147,7 +147,7 @@ def test_matching_by_server_glob_and_tool():
     assert not matches(w, finding(server="mcp:mailer", tool="read"))
     assert not matches(w, finding(server="mcp:mailer", tool=None))
     assert not matches(w, finding(server="mcp:other", tool="send_email"))
-    assert not matches(w, finding(rule="AA003", server="mcp:mailer", tool="send_email"))
+    assert not matches(w, finding(rule="TV003", server="mcp:mailer", tool="send_email"))
 
 
 def test_apply_policy_marks_waived_findings_and_keeps_them():
@@ -165,7 +165,7 @@ def test_expired_waivers_stop_applying():
 
 
 def test_severity_override_applies_before_waivers():
-    policy = parse(severity={"AA002": "low"})
+    policy = parse(severity={"TV002": "low"})
     assert apply_policy([finding()], policy, TODAY)[0].severity is Severity.LOW
 
 
@@ -194,7 +194,7 @@ def test_load_policy_files(tmp_path):
     assert load_policy(tmp_path / "missing.toml", TODAY) == Policy()
     path = tmp_path / "agent.policy.toml"
     path.write_text(
-        f'fail_on = "medium"\n\n[[waiver]]\nrule = "AA002"\nserver = "mcp:mailer"\n'
+        f'fail_on = "medium"\n\n[[waiver]]\nrule = "TV002"\nserver = "mcp:mailer"\n'
         f'reason = "sandbox"\nowner = "bob"\nexpires = {FUTURE}\n',
         encoding="utf-8",
     )

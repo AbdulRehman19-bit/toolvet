@@ -1,4 +1,4 @@
-name: agentaudit
+name: toolvet
 description: Audit MCP server configurations for dangerous tool combinations and drift from agent.lock.
 author: AbdulRehman
 branding:
@@ -13,11 +13,11 @@ inputs:
     description: Fail if a finding is at least this severe (info, low, medium, high, critical).
     default: high
   verify:
-    description: Also run `agentaudit verify` when agent.lock exists.
+    description: Also run `toolvet verify` when agent.lock exists.
     default: "true"
   sarif-file:
     description: Where to write the SARIF report.
-    default: agentaudit.sarif
+    default: toolvet.sarif
   classify:
     description: Also score tool descriptions with the local ML classifier (advisory, never fails the build).
     default: "false"
@@ -46,7 +46,7 @@ runs:
       with:
         python-version: "3.12"
 
-    - name: Install agentaudit
+    - name: Install toolvet
       shell: bash
       env:
         CLASSIFY: ${{ inputs.classify }}
@@ -66,10 +66,10 @@ runs:
         set +e
         extra=""
         [ "$CLASSIFY" = "true" ] && extra="--classify"
-        agentaudit scan "${{ inputs.path }}" --no-user $extra --format sarif \
+        toolvet scan "${{ inputs.path }}" --no-user $extra --format sarif \
           --output "${{ inputs.sarif-file }}" --fail-on "${{ inputs.fail-on }}"
         echo "code=$?" >> "$GITHUB_OUTPUT"
-        agentaudit scan "${{ inputs.path }}" --no-user $extra --fail-on "${{ inputs.fail-on }}" || true
+        toolvet scan "${{ inputs.path }}" --no-user $extra --fail-on "${{ inputs.fail-on }}" || true
 
     - name: Upload SARIF
       if: always() && inputs.upload-sarif == 'true'
@@ -84,7 +84,7 @@ runs:
       run: |
         set +e
         if [ -f "${{ inputs.path }}/agent.lock" ]; then
-          agentaudit verify "${{ inputs.path }}"
+          toolvet verify "${{ inputs.path }}"
           echo "code=$?" >> "$GITHUB_OUTPUT"
         else
           echo "No agent.lock found; skipping verify."
@@ -103,14 +103,14 @@ runs:
       run: |
         set +e
         git -C "$INPUT_PATH" fetch --no-tags --depth=1 origin "$BASE_SHA"
-        agentaudit diff "$INPUT_PATH" --base "$BASE_SHA" --format markdown \
-          --output agentaudit-diff.md --fail-on "$FAIL_ON" --policy "$DIFF_POLICY"
+        toolvet diff "$INPUT_PATH" --base "$BASE_SHA" --format markdown \
+          --output toolvet-diff.md --fail-on "$FAIL_ON" --policy "$DIFF_POLICY"
         code=$?
         echo "code=$code" >> "$GITHUB_OUTPUT"
-        if [ -f agentaudit-diff.md ]; then
-          cat agentaudit-diff.md >> "$GITHUB_STEP_SUMMARY"
+        if [ -f toolvet-diff.md ]; then
+          cat toolvet-diff.md >> "$GITHUB_STEP_SUMMARY"
         else
-          echo "agentaudit diff could not run (exit $code); see the log above." >> "$GITHUB_STEP_SUMMARY"
+          echo "toolvet diff could not run (exit $code); see the log above." >> "$GITHUB_STEP_SUMMARY"
         fi
 
     - name: Comment on the pull request
@@ -120,9 +120,9 @@ runs:
       with:
         script: |
           const fs = require('fs');
-          if (!fs.existsSync('agentaudit-diff.md')) return;
-          const body = fs.readFileSync('agentaudit-diff.md', 'utf8');
-          const marker = '<!-- agentaudit-diff -->';
+          if (!fs.existsSync('toolvet-diff.md')) return;
+          const body = fs.readFileSync('toolvet-diff.md', 'utf8');
+          const marker = '<!-- toolvet-diff -->';
           const { owner, repo } = context.repo;
           const issue_number = context.payload.pull_request.number;
           const comments = await github.paginate(github.rest.issues.listComments, {
@@ -150,6 +150,6 @@ runs:
         [ "${VERIFY_CODE:-0}" != "0" ] && fail=1
         [ "${DIFF_CODE:-0}" != "0" ] && fail=1
         if [ "$fail" = "1" ]; then
-          echo "agentaudit failed: scan exit ${SCAN_CODE:-unknown}, verify exit ${VERIFY_CODE:-skipped}, diff exit ${DIFF_CODE:-skipped}"
+          echo "toolvet failed: scan exit ${SCAN_CODE:-unknown}, verify exit ${VERIFY_CODE:-skipped}, diff exit ${DIFF_CODE:-skipped}"
           exit 1
         fi

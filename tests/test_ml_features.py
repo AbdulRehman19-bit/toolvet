@@ -1,6 +1,6 @@
 import math
 
-from agentaudit.ml.features import DIM, featurize, tokens
+from toolvet.ml.features import DIM, featurize, tokens
 
 
 def test_features_are_deterministic_and_normalised():

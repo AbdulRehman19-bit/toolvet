@@ -13,7 +13,7 @@ import re
 import shlex
 from pathlib import PurePath
 
-from agentaudit.models import Server
+from toolvet.models import Server
 
 POSIX_SHELLS = {"sh", "bash", "zsh", "dash", "fish"}
 _POSIX_SCRIPTING = re.compile(r"[;|&<>`$()\n]")

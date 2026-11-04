@@ -6,12 +6,12 @@ import json
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from agentaudit import __version__
-from agentaudit.models import Finding, Server, Severity
-from agentaudit.rules import load_rules
+from toolvet import __version__
+from toolvet.models import Finding, Server, Severity
+from toolvet.rules import load_rules
 
 SARIF_SCHEMA = "https://json.schemastore.org/sarif-2.1.0.json"
-INFO_URI = "https://github.com/AbdulRehman19-bit/agentaudit"
+INFO_URI = "https://github.com/AbdulRehman19-bit/toolvet"
 TRIFECTA_TITLE = "Lethal trifecta"
 
 _SARIF_LEVEL = {
@@ -38,7 +38,7 @@ def _uri(path: Path | None, root: Path) -> str | None:
 
 def to_json(servers: list[Server], findings: list[Finding], root: Path) -> str:
     report = {
-        "tool": {"name": "agentaudit", "version": __version__},
+        "tool": {"name": "toolvet", "version": __version__},
         "servers": sorted(s.id for s in servers),
         "findings": [
             {
@@ -61,7 +61,7 @@ def to_json(servers: list[Server], findings: list[Finding], root: Path) -> str:
 
 def to_sarif(findings: list[Finding], root: Path) -> str:
     rules = [{"id": r.id, "shortDescription": {"text": r.title}} for r in load_rules()]
-    rules.append({"id": "AA100", "shortDescription": {"text": TRIFECTA_TITLE}})
+    rules.append({"id": "TV100", "shortDescription": {"text": TRIFECTA_TITLE}})
     results = []
     for f in _ordered(findings):
         result: dict = {
@@ -94,7 +94,7 @@ def to_sarif(findings: list[Finding], root: Path) -> str:
             {
                 "tool": {
                     "driver": {
-                        "name": "agentaudit",
+                        "name": "toolvet",
                         "version": __version__,
                         "informationUri": INFO_URI,
                         "rules": sorted(rules, key=lambda r: r["id"]),
@@ -109,7 +109,7 @@ def to_sarif(findings: list[Finding], root: Path) -> str:
 
 def to_markdown(servers: list[Server], findings: list[Finding]) -> str:
     lines = [
-        "# agentaudit report",
+        "# toolvet report",
         "",
         f"{len(servers)} MCP server(s), {len(findings)} finding(s).",
         "",
@@ -123,7 +123,7 @@ def to_markdown(servers: list[Server], findings: list[Finding]) -> str:
         level = f"{f.severity.value} (waived)" if f.waiver else f.severity.value
         lines.append(f"| {level} | {f.rule_id} | `{where}` | {message} |")
     for f in _ordered(findings):
-        if f.rule_id == "AA100":
+        if f.rule_id == "TV100":
             lines += ["", f"### Trifecta paths ({f.server})", ""]
             lines += [f"- {e}" for e in f.evidence]
             if f.fix and not f.waiver:
@@ -141,7 +141,7 @@ def to_badge(findings: list[Finding], fail_on: Severity = Severity.HIGH) -> str:
         text, color = f"{len(findings)} low-risk", "#b7791f"
     else:
         text, color = "passing", "#2f855a"
-    label = "agentaudit"
+    label = "toolvet"
     lw, rw = 6 * len(label) + 14, 6 * len(text) + 14
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{lw + rw}" height="20" role="img" '

@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from agentaudit.capabilities import tag_server
-from agentaudit.launch import effective
-from agentaudit.models import Capability, Server
-from agentaudit.rules import run_rules
+from toolvet.capabilities import tag_server
+from toolvet.launch import effective
+from toolvet.models import Capability, Server
+from toolvet.rules import run_rules
 
 
 def make(name="s", command="node", args=None, **kw) -> Server:
@@ -78,16 +78,16 @@ def test_real_shell_use_is_left_alone(command, args):
 
 def test_wrapped_server_is_not_a_shell_tool():
     wrapped = make(command="cmd", args=["/c", "uvx", "--python", "3.11", "blender-mcp"])
-    assert "AA001" not in rule_ids(wrapped)
+    assert "TV001" not in rule_ids(wrapped)
     bare = make(command="bash", args=["-c", "a | b"])
-    assert "AA001" in rule_ids(bare)
+    assert "TV001" in rule_ids(bare)
 
 
 def test_unpinned_package_hidden_behind_a_wrapper_is_found():
     wrapped = make(command="cmd", args=["/c", "uvx", "--python", "3.11", "blender-mcp"])
-    assert "AA003" in rule_ids(wrapped)
+    assert "TV003" in rule_ids(wrapped)
     pinned = make(command="bash", args=["-c", "exec npx -y pkg@1.2.3"])
-    assert "AA003" not in rule_ids(pinned)
+    assert "TV003" not in rule_ids(pinned)
 
 
 def test_wrapper_shell_does_not_tag_the_server_as_private_data_and_sink():

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from agentaudit.cli import app
+from toolvet.cli import app
 
 runner = CliRunner()
 
@@ -107,7 +107,7 @@ def test_resolved_trifecta_has_no_fixes(repo):
 def test_accepted_trifecta_gets_no_fix_nagging(repo):
     expires = (date.today() + timedelta(days=60)).isoformat()
     policy = (
-        '[[waiver]]\nrule = "AA100"\nservers = ["mcp:postgres", "mcp:search", "mcp:smtp"]\n'
+        '[[waiver]]\nrule = "TV100"\nservers = ["mcp:postgres", "mcp:search", "mcp:smtp"]\n'
         f'reason = "sandboxed"\nowner = "alice"\nexpires = {expires}\n'
     )
     write(repo, "search", "postgres", policy=policy)

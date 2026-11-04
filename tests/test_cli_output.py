@@ -5,9 +5,9 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from agentaudit.cli import app
-from agentaudit.models import Tool
-from agentaudit.snapshot import write_snapshot
+from toolvet.cli import app
+from toolvet.models import Tool
+from toolvet.snapshot import write_snapshot
 
 runner = CliRunner()
 EMOJI_NOTES = "\U0001f3b6"  # what Rich renders for the shortcode :notes:

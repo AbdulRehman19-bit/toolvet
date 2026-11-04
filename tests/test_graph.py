@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from agentaudit.capabilities import tag_server
-from agentaudit.discovery import discover
-from agentaudit.graph import MAX_PATHS_LISTED, build_graph, find_trifectas
-from agentaudit.models import Capability, Server, Severity, Tool
+from toolvet.capabilities import tag_server
+from toolvet.discovery import discover
+from toolvet.graph import MAX_PATHS_LISTED, build_graph, find_trifectas
+from toolvet.models import Capability, Server, Severity, Tool
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -30,7 +30,7 @@ def test_cross_server_trifecta():
         make("mailer", command="uvx", args=["smtp-server"]),
     ]
     (finding,) = find_trifectas(servers)
-    assert finding.rule_id == "AA100"
+    assert finding.rule_id == "TV100"
     assert finding.severity is Severity.CRITICAL
     assert "across 3 servers" in finding.message
     assert any("test:browser" in e and "test:postgres" in e for e in finding.evidence)

@@ -3,6 +3,14 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-11-04
+
+### Changed (breaking)
+- **Renamed from `agentaudit` to `toolvet`.** PyPI rejected `agentaudit` as too similar to the existing, active project `agent-audit`, and the two names would have been confused. The command is now `toolvet`, the Python package `toolvet`, the plugin entry-point group `toolvet.rules`, and the GitHub Action `AbdulRehman19-bit/toolvet`. Earlier entries below keep the old name as history.
+- **Rule ids moved from `AA###` to `TV###`** (`AA001` is now `TV001`, `AA100` is now `TV100`, and so on). Update severity overrides and waivers in `agent.policy.toml` accordingly.
+- The pull request comment marker is now `<!-- toolvet-diff -->`; an old comment is not updated, a new one is created.
+- `agent.lock`, `agent.tools.json` and `agent.policy.toml` keep their names.
+
 ## [0.6.3] - 2026-11-04
 
 ### Changed

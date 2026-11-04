@@ -5,9 +5,9 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from agentaudit.discovery import _PROJECT_CONFIGS
-from agentaudit.policy import POLICY_NAME
-from agentaudit.snapshot import SNAPSHOT_NAME
+from toolvet.discovery import _PROJECT_CONFIGS
+from toolvet.policy import POLICY_NAME
+from toolvet.snapshot import SNAPSHOT_NAME
 
 CONFIG_FILES = [rel for rel, _ in _PROJECT_CONFIGS.values()] + [
     "claude_desktop_config.json",

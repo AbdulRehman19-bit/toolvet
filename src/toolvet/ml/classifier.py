@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agentaudit.ml.features import DIM, featurize
-from agentaudit.models import Finding, Server, Severity
+from toolvet.ml.features import DIM, featurize
+from toolvet.models import Finding, Server, Severity
 
 MODEL_DIR = Path(__file__).parent
 RULE_ID = "ML001"
@@ -29,7 +29,7 @@ class Classifier:
             import onnxruntime
         except ImportError as exc:
             raise MLUnavailable(
-                "The classifier needs optional dependencies: pip install 'agentaudit[ml]'"
+                "The classifier needs optional dependencies: pip install 'toolvet[ml]'"
             ) from exc
         self._np = numpy
         meta = json.loads((MODEL_DIR / "model.json").read_text(encoding="utf-8"))

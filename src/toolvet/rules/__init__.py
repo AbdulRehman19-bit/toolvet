@@ -2,15 +2,15 @@
 
 Writing a rule::
 
-    from agentaudit.rules import Hit, rule
-    from agentaudit.models import Severity
+    from toolvet.rules import Hit, rule
+    from toolvet.models import Severity
 
     @rule("XX001", "Example rule")
     def example(server):
         if server.command == "bad":
             yield Hit(Severity.HIGH, "Uses the bad command")
 
-Third-party packages expose Rule objects through the ``agentaudit.rules`` entry-point group.
+Third-party packages expose Rule objects through the ``toolvet.rules`` entry-point group.
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from importlib.metadata import entry_points
 
-from agentaudit.launch import effective
-from agentaudit.models import Finding, Server, Severity
+from toolvet.launch import effective
+from toolvet.models import Finding, Server, Severity
 
 
 @dataclass(frozen=True)
@@ -53,10 +53,10 @@ def rule(rule_id: str, title: str) -> Callable[[Callable[[Server], Iterable[Hit]
 
 def load_rules(plugins: bool = True) -> list[Rule]:
     """Return built-in rules plus any rules registered through entry points."""
-    importlib.import_module("agentaudit.rules.builtin")
+    importlib.import_module("toolvet.rules.builtin")
     rules = dict(_REGISTRY)
     if plugins:
-        for ep in entry_points(group="agentaudit.rules"):
+        for ep in entry_points(group="toolvet.rules"):
             loaded = ep.load()
             if isinstance(loaded, Rule):
                 rules[loaded.id] = loaded

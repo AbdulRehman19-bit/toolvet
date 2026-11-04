@@ -6,8 +6,8 @@ import re
 from collections.abc import Iterator
 from pathlib import PurePath
 
-from agentaudit.models import Server, Severity
-from agentaudit.rules import Hit, rule
+from toolvet.models import Server, Severity
+from toolvet.rules import Hit, rule
 
 _ALWAYS_FETCH = {"npx", "bunx", "uvx"}
 # Runners that fetch a package only through one subcommand. `npm run`, `pnpm run`, `uv run`
@@ -96,7 +96,7 @@ def _package_spec(server: Server) -> str | None:
     return None
 
 
-@rule("AA001", "Shell access")
+@rule("TV001", "Shell access")
 def shell_access(server: Server) -> Iterator[Hit]:
     spec = _package_spec(server) or ""
     if _command_name(server) in _SHELLS:
@@ -111,7 +111,7 @@ def shell_access(server: Server) -> Iterator[Hit]:
         )
 
 
-@rule("AA002", "Secrets in env vars")
+@rule("TV002", "Secrets in env vars")
 def secret_env(server: Server) -> Iterator[Hit]:
     for key, value in server.env.items():
         if _SECRET_KEY.search(key) and not _is_placeholder(value):
@@ -122,7 +122,7 @@ def secret_env(server: Server) -> Iterator[Hit]:
             )
 
 
-@rule("AA003", "Unpinned package")
+@rule("TV003", "Unpinned package")
 def unpinned_package(server: Server) -> Iterator[Hit]:
     spec = _package_spec(server)
     if not spec or spec.startswith((".", "/", "~")) or re.match(r"^[A-Za-z]:[\\/]", spec):
@@ -151,7 +151,7 @@ def unpinned_package(server: Server) -> Iterator[Hit]:
         yield Hit(Severity.MEDIUM, f"Package {spec} is not pinned to a version", evidence=[spec])
 
 
-@rule("AA004", "Wildcard or root path")
+@rule("TV004", "Wildcard or root path")
 def wildcard_path(server: Server) -> Iterator[Hit]:
     for arg in server.args:
         if arg.startswith("-"):
@@ -164,7 +164,7 @@ def wildcard_path(server: Server) -> Iterator[Hit]:
             )
 
 
-@rule("AA005", "Plain HTTP remote server")
+@rule("TV005", "Plain HTTP remote server")
 def plain_http(server: Server) -> Iterator[Hit]:
     url = server.url or ""
     if url.startswith("http://") and not re.match(r"http://(localhost|127\.0\.0\.1|\[::1\])", url):
@@ -186,7 +186,7 @@ _DOWNLOAD_EXEC = re.compile(
 )
 
 
-@rule("AA006", "Suspicious tool description")
+@rule("TV006", "Suspicious tool description")
 def suspicious_description(server: Server) -> Iterator[Hit]:
     for tool in server.tools:
         for pattern in _INJECTION:
@@ -200,7 +200,7 @@ def suspicious_description(server: Server) -> Iterator[Hit]:
                 )
 
 
-@rule("AA007", "Credentials in server URL")
+@rule("TV007", "Credentials in server URL")
 def url_credentials(server: Server) -> Iterator[Hit]:
     url = server.url or ""
     if _CRED_URL.search(url) or _CRED_QUERY.search(url):
@@ -211,7 +211,7 @@ def url_credentials(server: Server) -> Iterator[Hit]:
         )
 
 
-@rule("AA008", "Credentials in arguments")
+@rule("TV008", "Credentials in arguments")
 def arg_credentials(server: Server) -> Iterator[Hit]:
     args = server.args
     for i, arg in enumerate(args):
@@ -228,7 +228,7 @@ def arg_credentials(server: Server) -> Iterator[Hit]:
                 )
 
 
-@rule("AA009", "Download and execute")
+@rule("TV009", "Download and execute")
 def download_exec(server: Server) -> Iterator[Hit]:
     line = " ".join([server.command or "", *server.args])
     if _command_name(server) in {"curl", "wget"} or _DOWNLOAD_EXEC.search(line):
@@ -237,7 +237,7 @@ def download_exec(server: Server) -> Iterator[Hit]:
         )
 
 
-@rule("AA010", "Risky container options")
+@rule("TV010", "Risky container options")
 def risky_container(server: Server) -> Iterator[Hit]:
     if _command_name(server) not in {"docker", "podman"}:
         return

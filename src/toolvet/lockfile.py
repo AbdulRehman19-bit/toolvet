@@ -12,7 +12,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from agentaudit.models import Server, Tool
+from toolvet.models import Server, Tool
 
 LOCK_NAME = "agent.lock"
 LOCK_VERSION = 1
@@ -71,7 +71,7 @@ def read_lock(path: Path) -> dict:
     except ValueError as exc:
         raise LockError(f"{path} is not valid JSON") from exc
     if not isinstance(data, dict) or not isinstance(data.get("servers"), dict):
-        raise LockError(f"{path} is not an agentaudit lockfile")
+        raise LockError(f"{path} is not an toolvet lockfile")
     if data.get("version") != LOCK_VERSION:
         raise LockError(f"{path} has unsupported version {data.get('version')!r}")
     return data

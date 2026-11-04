@@ -12,9 +12,9 @@ from pathlib import Path
 
 import networkx as nx
 
-from agentaudit.capabilities import tag_server
-from agentaudit.fixes import trifecta_fixes
-from agentaudit.models import Capability, Finding, Server, Severity
+from toolvet.capabilities import tag_server
+from toolvet.fixes import trifecta_fixes
+from toolvet.models import Capability, Finding, Server, Severity
 
 MAX_PATHS_LISTED = 5
 MAX_FIXES_LISTED = 3
@@ -86,7 +86,7 @@ def find_trifectas(servers: list[Server]) -> list[Finding]:
             evidence.append(f"... and {extra} more path(s)")
         findings.append(
             Finding(
-                rule_id="AA100",
+                rule_id="TV100",
                 severity=Severity.CRITICAL,
                 message=(
                     f"Lethal trifecta {kind}: untrusted input can reach private data "

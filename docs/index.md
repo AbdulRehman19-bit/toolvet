@@ -1,4 +1,4 @@
-# agentaudit
+# toolvet
 
 Find dangerous combinations of AI agent tools (MCP servers) before attackers do, and pin what you approved so silent changes fail CI.
 
@@ -7,12 +7,12 @@ Find dangerous combinations of AI agent tools (MCP servers) before attackers do,
 ## Quick start
 
 ```bash
-git clone https://github.com/AbdulRehman19-bit/agentaudit
-cd agentaudit && uv sync
-uv run agentaudit scan /path/to/your/repo
+git clone https://github.com/AbdulRehman19-bit/toolvet
+cd toolvet && uv sync
+uv run toolvet scan /path/to/your/repo
 ```
 
-Or install it from PyPI: `pipx run agentaudit scan`.
+Or install it from PyPI: `pipx run toolvet scan`.
 
 ## Guides
 
@@ -20,17 +20,17 @@ Or install it from PyPI: `pipx run agentaudit scan`.
 - [Using it in CI](ci): the GitHub Action, SARIF and lockfile verification
 - [Policy and waivers](policy): accept risk with an owner and an expiry date
 - [Classifier accuracy](classifier): the optional ML classifier and how well it works
-- [Contributing](https://github.com/AbdulRehman19-bit/agentaudit/blob/main/CONTRIBUTING.md): write a rule in ten minutes
+- [Contributing](https://github.com/AbdulRehman19-bit/toolvet/blob/main/CONTRIBUTING.md): write a rule in ten minutes
 
 ## The two attacks
 
 **The lethal trifecta.** One agent holds a tool that reads untrusted content, a tool that reads private data and a tool that sends data out. A hidden instruction in a web page can then exfiltrate private data. Each server passes review alone; the danger is in the combination.
 
-**The rug pull.** A server ships a harmless tool description, you approve it, and a later update changes it. `agentaudit lock` records hashes and `agentaudit verify` fails when anything drifts.
+**The rug pull.** A server ships a harmless tool description, you approve it, and a later update changes it. `toolvet lock` records hashes and `toolvet verify` fails when anything drifts.
 
 ## How it compares
 
-Snyk Agent Scan (formerly `mcp-scan`) also analyses cross-tool flows. agentaudit is the offline, deterministic option whose approvals live in your repo. See the [comparison table](https://github.com/AbdulRehman19-bit/agentaudit#how-it-compares).
+Snyk Agent Scan (formerly `mcp-scan`) also analyses cross-tool flows. toolvet is the offline, deterministic option whose approvals live in your repo. See the [comparison table](https://github.com/AbdulRehman19-bit/toolvet#how-it-compares).
 
 ## Principles
 

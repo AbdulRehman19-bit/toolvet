@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from agentaudit.cli import app
-from agentaudit.diff_render import MARKER
-from agentaudit.models import Tool
-from agentaudit.snapshot import write_snapshot
+from toolvet.cli import app
+from toolvet.diff_render import MARKER
+from toolvet.models import Tool
+from toolvet.snapshot import write_snapshot
 
 runner = CliRunner()
 
@@ -138,7 +138,7 @@ def test_fail_on_threshold_applies_to_new_findings(repo):
         ),
         encoding="utf-8",
     )
-    assert run(repo, "--base", "base").exit_code == 0  # AA003 is medium, below the default
+    assert run(repo, "--base", "base").exit_code == 0  # TV003 is medium, below the default
     assert run(repo, "--base", "base", "--fail-on", "medium").exit_code == 1
 
 

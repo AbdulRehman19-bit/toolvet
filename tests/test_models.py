@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from agentaudit.models import Server, Severity
+from toolvet.models import Server, Severity
 
 
 def test_server_id_combines_client_and_name():

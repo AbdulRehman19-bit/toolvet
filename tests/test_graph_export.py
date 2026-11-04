@@ -3,10 +3,10 @@ from xml.etree import ElementTree
 
 from typer.testing import CliRunner
 
-from agentaudit.cli import app
-from agentaudit.discovery import discover
-from agentaudit.graph import build_graph
-from agentaudit.graph_export import to_mermaid, to_svg
+from toolvet.cli import app
+from toolvet.discovery import discover
+from toolvet.graph import build_graph
+from toolvet.graph_export import to_mermaid, to_svg
 
 FIXTURES = Path(__file__).parent / "fixtures"
 runner = CliRunner()

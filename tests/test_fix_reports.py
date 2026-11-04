@@ -3,9 +3,9 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from agentaudit.cli import app
-from agentaudit.graph import MAX_FIXES_LISTED, find_trifectas
-from agentaudit.models import Server
+from toolvet.cli import app
+from toolvet.graph import MAX_FIXES_LISTED, find_trifectas
+from toolvet.models import Server
 
 runner = CliRunner()
 
@@ -45,10 +45,10 @@ def test_json_sarif_and_markdown_include_the_fixes(tmp_path):
     path = repo(tmp_path, "search", "postgres", "smtp")
     base = ["scan", str(path), "--no-user", "--format"]
     data = json.loads(runner.invoke(app, [*base, "json"]).output)
-    trifecta = next(f for f in data["findings"] if f["rule"] == "AA100")
+    trifecta = next(f for f in data["findings"] if f["rule"] == "TV100")
     assert trifecta["fix"]
     sarif = json.loads(runner.invoke(app, [*base, "sarif"]).output)
-    result = next(r for r in sarif["runs"][0]["results"] if r["ruleId"] == "AA100")
+    result = next(r for r in sarif["runs"][0]["results"] if r["ruleId"] == "TV100")
     assert result["properties"]["suggestions"] == trifecta["fix"]
     markdown = runner.invoke(app, [*base, "markdown"]).output
     assert "Smallest fixes:" in markdown
@@ -59,7 +59,7 @@ def test_waived_trifecta_does_not_nag_about_fixes(tmp_path):
 
     expires = (date.today() + timedelta(days=30)).isoformat()
     policy = (
-        '[[waiver]]\nrule = "AA100"\nservers = ["mcp:postgres", "mcp:search", "mcp:smtp"]\n'
+        '[[waiver]]\nrule = "TV100"\nservers = ["mcp:postgres", "mcp:search", "mcp:smtp"]\n'
         f'reason = "sandboxed"\nowner = "alice"\nexpires = {expires}\n'
     )
     path = repo(tmp_path, "search", "postgres", "smtp", policy=policy)

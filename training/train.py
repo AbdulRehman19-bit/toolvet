@@ -20,10 +20,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from agentaudit.ml.features import DIM, featurize
+from toolvet.ml.features import DIM, featurize
 
 ROOT = Path(__file__).parent
-MODEL_DIR = ROOT.parent / "src" / "agentaudit" / "ml"
+MODEL_DIR = ROOT.parent / "src" / "toolvet" / "ml"
 TARGET_FPR = 0.01
 SEED = 7
 

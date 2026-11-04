@@ -1,6 +1,6 @@
 # Classifier accuracy
 
-agentaudit's optional classifier (`scan --classify`, install `agentaudit[ml]`) flags
+toolvet's optional classifier (`scan --classify`, install `toolvet[ml]`) flags
 tool descriptions that look like prompt injection or exfiltration instructions.
 It is **advisory**: its findings are labelled as such and never fail CI.
 
