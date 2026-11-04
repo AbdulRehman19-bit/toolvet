@@ -1,0 +1,5 @@
+title: agentaudit
+description: Find dangerous combinations of AI agent tools before attackers do, and pin what you approved.
+theme: jekyll-theme-cayman
+exclude:
+  - DESIGN.md

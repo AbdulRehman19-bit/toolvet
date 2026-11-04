@@ -1,0 +1,48 @@
+# Rules reference
+
+| Rule | Severity | Title |
+|---|---|---|
+| [AA001](#aa001-shell-access) | high | Shell access |
+| [AA002](#aa002-secrets-in-env-vars) | high | Secrets in env vars |
+| [AA003](#aa003-unpinned-package) | medium | Unpinned package |
+| [AA004](#aa004-wildcard-or-root-path) | high | Wildcard or root path |
+| [AA005](#aa005-plain-http-remote-server) | medium | Plain HTTP remote server |
+| [AA006](#aa006-suspicious-tool-description) | high | Suspicious tool description |
+| [AA007](#aa007-credentials-in-server-url) | high | Credentials in server URL |
+| [AA008](#aa008-credentials-in-arguments) | high | Credentials in arguments |
+| [AA009](#aa009-download-and-execute) | high | Download and execute |
+| [AA010](#aa010-risky-container-options) | high / medium | Risky container options |
+| [AA100](#aa100-lethal-trifecta) | critical | Lethal trifecta |
+
+## AA001 Shell access
+The server is launched through `sh`, `bash`, `cmd`, `powershell` and similar, or its name or package contains "shell" or "terminal". A shell tool can run anything the agent is talked into running. **Fix:** use a purpose-built server, or restrict the allowed commands.
+
+## AA002 Secrets in env vars
+An `env` entry whose name contains KEY, TOKEN, SECRET, PASSWORD or CREDENTIAL holds a literal value. Config files get committed and synced. **Fix:** reference the variable (`${env:NAME}` or your client's equivalent). The report shows the variable name, never the value.
+
+## AA003 Unpinned package
+`npx`, `uvx`, `pipx` and similar fetch the latest version on each launch, so an upstream change reaches you without review. **Fix:** pin a version: `pkg@1.2.3` or `pkg==1.2.3`. `@latest` counts as unpinned.
+
+## AA004 Wildcard or root path
+An argument such as `/`, `~`, `C:\`, `/home` or `/home/*` gives the server access to far more than it needs. **Fix:** point it at one project directory.
+
+## AA005 Plain HTTP remote server
+A remote server URL starts with `http://` (not localhost). Traffic, including tool results, is readable and modifiable in transit. **Fix:** use `https://`.
+
+## AA006 Suspicious tool description
+A tool description contains instruction-like text such as "ignore previous instructions", `<IMPORTANT>`, "do not tell the user", or references to `~/.ssh`. This is tool poisoning. It needs tool definitions, so run `agentaudit snapshot --introspect` first. **Fix:** do not use the server until the description is explained.
+
+## AA007 Credentials in server URL
+A remote URL embeds `user:password@` or a `token=`, `key=` or `password=` query parameter. URLs end up in logs. **Fix:** use a header or an environment reference.
+
+## AA008 Credentials in arguments
+A launch argument contains a credentialed URL (`postgresql://user:pass@host/db`) or passes a literal value to `--token`, `--password` or `--api-key`. Command lines are visible in process lists. **Fix:** pass secrets through the environment.
+
+## AA009 Download and execute
+The launch command pipes a download into a shell (`curl ... | sh`), uses `iex` or `Invoke-Expression`, or is `curl`/`wget` itself. The code that runs is whatever the remote host serves at launch time. **Fix:** install a pinned release and run that.
+
+## AA010 Risky container options
+A `docker` or `podman` server runs `--privileged`, mounts the host root or the Docker socket (both high), or shares the host network (medium). **Fix:** drop the option, or mount a single data directory.
+
+## AA100 Lethal trifecta
+Within one config file, a path exists from an untrusted source, through a private-data reader, to a sink. Tags come from a fixed keyword table and each finding lists the keyword behind every hop. This is a heuristic: treat it as "review this combination", and split the servers across separate agent configs if the combination is not needed.

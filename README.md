@@ -51,6 +51,43 @@ agentaudit verify
 
 MCP configs only say how to launch a server, not what tools it exposes. Without a snapshot, `lock` pins each server's launch definition but not its tool descriptions, and `lock` tells you so. Introspection runs the commands from your own config, exactly as your MCP client does. It is not a sandbox.
 
+## In CI
+
+Use the GitHub Action. It scans, writes a SARIF report, and runs `verify` when `agent.lock` exists:
+
+```yaml
+name: agentaudit
+on: [push, pull_request]
+permissions:
+  contents: read
+  security-events: write   # only needed for upload-sarif
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: AbdulRehman19-bit/agentaudit@v0.2.0
+        with:
+          fail-on: high
+          upload-sarif: "true"   # shows findings in the Security tab
+```
+
+The action installs agentaudit from the tagged action source, so the version you pin is the version that runs.
+
+Other report formats: `agentaudit scan --format json|sarif|markdown|badge [-o file]`.
+
+### Badge
+
+```bash
+agentaudit scan --format badge -o docs/agentaudit.svg
+```
+
+```markdown
+![agentaudit](docs/agentaudit.svg)
+```
+
+Commit the SVG and regenerate it in CI. It shows `passing`, a count of low-risk findings, or a count of issues at or above `--fail-on`.
+
 ## What it checks
 
 | Rule | Severity | Finds |
@@ -85,7 +122,7 @@ A rule is a function from one server to findings. See [CONTRIBUTING.md](CONTRIBU
 
 ## Status
 
-Pre-release (v0.1). Roadmap: SARIF/JSON output and a GitHub Action (v0.2), an opt-in local classifier (v0.3). See [docs/DESIGN.md](docs/DESIGN.md).
+Pre-release. v0.2 adds SARIF/JSON/Markdown/badge output and a GitHub Action. Next: an opt-in local classifier (v0.3). See [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Licence
 
