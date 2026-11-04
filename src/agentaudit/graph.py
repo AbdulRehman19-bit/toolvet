@@ -13,9 +13,11 @@ from pathlib import Path
 import networkx as nx
 
 from agentaudit.capabilities import tag_server
+from agentaudit.fixes import trifecta_fixes
 from agentaudit.models import Capability, Finding, Server, Severity
 
 MAX_PATHS_LISTED = 5
+MAX_FIXES_LISTED = 3
 
 
 def node_id(server: Server, capability: Capability) -> str:
@@ -72,6 +74,7 @@ def find_trifectas(servers: list[Server]) -> list[Finding]:
             for path in nx.all_simple_paths(graph, source, sink, cutoff=2):
                 if len(path) == 3:
                     by_scope[graph.nodes[source]["scope"]].append(path)
+    fixes = trifecta_fixes(servers)
     findings = []
     for scope, paths in sorted(by_scope.items()):
         involved = sorted({graph.nodes[n]["server"] for p in paths for n in p})
@@ -92,6 +95,7 @@ def find_trifectas(servers: list[Server]) -> list[Finding]:
                 server=", ".join(involved),
                 source=Path(scope),
                 evidence=evidence,
+                fix=[o.describe() for o in fixes.get(scope, [])[:MAX_FIXES_LISTED]],
             )
         )
     return findings

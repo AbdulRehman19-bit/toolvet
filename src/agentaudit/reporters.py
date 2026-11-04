@@ -51,6 +51,7 @@ def to_json(servers: list[Server], findings: list[Finding], root: Path) -> str:
                 "evidence": f.evidence,
                 "advisory": f.advisory,
                 "waiver": f.waiver,
+                "fix": f.fix,
             }
             for f in _ordered(findings)
         ],
@@ -67,7 +68,12 @@ def to_sarif(findings: list[Finding], root: Path) -> str:
             "ruleId": f.rule_id,
             "level": "note" if f.advisory else _SARIF_LEVEL[f.severity],
             "message": {"text": f"{f.server}: {f.message}"},
-            "properties": {"server": f.server, "tool": f.tool, "evidence": f.evidence},
+            "properties": {
+                "server": f.server,
+                "tool": f.tool,
+                "evidence": f.evidence,
+                "suggestions": f.fix,
+            },
         }
         if f.waiver:
             result["suppressions"] = [
@@ -120,6 +126,8 @@ def to_markdown(servers: list[Server], findings: list[Finding]) -> str:
         if f.rule_id == "AA100":
             lines += ["", f"### Trifecta paths ({f.server})", ""]
             lines += [f"- {e}" for e in f.evidence]
+            if f.fix and not f.waiver:
+                lines += ["", "Smallest fixes:", ""] + [f"- {line}" for line in f.fix]
     return "\n".join(lines) + "\n"
 
 

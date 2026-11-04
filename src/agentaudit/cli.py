@@ -90,6 +90,8 @@ def _findings_table(findings: list[Finding]) -> Table:
         message = f.message
         if f.rule_id == "AA100":
             message += "\n" + "\n".join(f"  {line}" for line in f.evidence)
+        if f.fix and not f.waiver:
+            message += "\n  Smallest fixes:" + "".join(f"\n    - {line}" for line in f.fix)
         if f.waiver:
             message += (
                 f"\n  waived by {f.waiver['owner']} until {f.waiver['expires']}: "

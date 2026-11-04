@@ -60,3 +60,5 @@ class Finding(BaseModel):
     advisory: bool = False
     # Set when an unexpired waiver in agent.policy.toml covers this finding.
     waiver: dict[str, str] | None = None
+    # Smallest ways to resolve the finding (set on lethal-trifecta findings).
+    fix: list[str] = Field(default_factory=list)
