@@ -1,0 +1,84 @@
+name: agentaudit
+description: Audit MCP server configurations for dangerous tool combinations and drift from agent.lock.
+author: AbdulRehman
+branding:
+  icon: shield
+  color: red
+
+inputs:
+  path:
+    description: Repository path to scan.
+    default: "."
+  fail-on:
+    description: Fail if a finding is at least this severe (info, low, medium, high, critical).
+    default: high
+  verify:
+    description: Also run `agentaudit verify` when agent.lock exists.
+    default: "true"
+  sarif-file:
+    description: Where to write the SARIF report.
+    default: agentaudit.sarif
+  upload-sarif:
+    description: Upload the SARIF report to GitHub code scanning (needs security-events write).
+    default: "false"
+
+outputs:
+  sarif-file:
+    description: Path of the SARIF report.
+    value: ${{ inputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install agentaudit
+      shell: bash
+      run: python -m pip install --quiet "${{ github.action_path }}"
+
+    - name: Scan
+      id: scan
+      shell: bash
+      run: |
+        set +e
+        agentaudit scan "${{ inputs.path }}" --no-user --format sarif \
+          --output "${{ inputs.sarif-file }}" --fail-on "${{ inputs.fail-on }}"
+        echo "code=$?" >> "$GITHUB_OUTPUT"
+        agentaudit scan "${{ inputs.path }}" --no-user --fail-on "${{ inputs.fail-on }}" || true
+
+    - name: Upload SARIF
+      if: always() && inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+
+    - name: Verify lockfile
+      id: verify
+      if: always() && inputs.verify == 'true'
+      shell: bash
+      run: |
+        set +e
+        if [ -f "${{ inputs.path }}/agent.lock" ]; then
+          agentaudit verify "${{ inputs.path }}"
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+        else
+          echo "No agent.lock found; skipping verify."
+          echo "code=0" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Fail on findings or drift
+      if: always()
+      shell: bash
+      env:
+        SCAN_CODE: ${{ steps.scan.outputs.code }}
+        VERIFY_CODE: ${{ steps.verify.outputs.code }}
+      run: |
+        fail=0
+        [ "${SCAN_CODE:-1}" != "0" ] && fail=1
+        [ "${VERIFY_CODE:-0}" != "0" ] && fail=1
+        if [ "$fail" = "1" ]; then
+          echo "agentaudit failed: scan exit ${SCAN_CODE:-unknown}, verify exit ${VERIFY_CODE:-skipped}"
+          exit 1
+        fi

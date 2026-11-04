@@ -1,0 +1,30 @@
+name: Action self-test
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  clean-passes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          path: tests/fixtures/clean
+
+  risky-fails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: risky
+        uses: ./
+        continue-on-error: true
+        with:
+          path: tests/fixtures/claude_desktop
+      - name: The action must have failed
+        run: |
+          if [ "${{ steps.risky.outcome }}" != "failure" ]; then
+            echo "expected the action to fail on risky fixtures"
+            exit 1
+          fi
