@@ -4,7 +4,7 @@ Find dangerous combinations of AI agent tools (MCP servers) before attackers do,
 
 Every MCP server you install can look safe on its own. agentaudit shows what they can do **together**.
 
-![Three servers form one exfiltration path](docs/trifecta.svg)
+![Three servers form one exfiltration path](https://raw.githubusercontent.com/AbdulRehman19-bit/agentaudit/main/docs/trifecta.svg)
 
 *One agent session, three servers that each pass review alone: a web fetcher reads untrusted content, a filesystem server reads private files, and a GitHub or fetch tool can send data out. agentaudit reports the source-to-sink path.*
 
@@ -18,12 +18,12 @@ Two attacks matter most when you give an agent tools:
 ## Install
 
 ```bash
-pipx run agentaudit scan        # once published to PyPI
-# until then, from a clone:
-uv sync && uv run agentaudit scan
+pipx run agentaudit scan          # run once, nothing installed
+pipx install agentaudit           # or install the command
+pip install 'agentaudit[ml]'      # with the optional local classifier
 ```
 
-Requires Python 3.11+. Not yet published to PyPI.
+Requires Python 3.11+. To work on agentaudit itself: clone the repo, then `uv sync && uv run agentaudit scan`.
 
 ## Use
 
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: AbdulRehman19-bit/agentaudit@v0.6.2
+      - uses: AbdulRehman19-bit/agentaudit@v0.6.3
         with:
           fail-on: high
           upload-sarif: "true"   # shows findings in the Security tab
@@ -164,7 +164,7 @@ expires = 2027-01-15
 - **A pull request cannot waive its own risk:** `diff` applies the base branch's policy, and lists any waivers the PR adds for a reviewer to approve.
 - `agentaudit policy check` reports expired, soon-to-expire and unused waivers.
 
-Details: [docs/policy.md](docs/policy.md).
+Details: [docs/policy.md](https://github.com/AbdulRehman19-bit/agentaudit/blob/main/docs/policy.md).
 
 ## Optional: local ML classifier
 
@@ -176,13 +176,13 @@ agentaudit snapshot --introspect     # the classifier needs real tool descriptio
 agentaudit scan --classify
 ```
 
-Measured accuracy, with the caveats that matter, is in [docs/classifier.md](docs/classifier.md). In short: on held-out synthetic data the false-positive rate is 0.8%, but on a small hand-written set closer to real descriptions it is **11.4%** (95% interval 4.5% to 26%). The training data is synthetic, so treat it as a second opinion next to the deterministic rules. A real-world false-positive rate has not been measured yet.
+Measured accuracy, with the caveats that matter, is in [docs/classifier.md](https://github.com/AbdulRehman19-bit/agentaudit/blob/main/docs/classifier.md). In short: on held-out synthetic data the false-positive rate is 0.8%, but on a small hand-written set closer to real descriptions it is **11.4%** (95% interval 4.5% to 26%). The training data is synthetic, so treat it as a second opinion next to the deterministic rules. A real-world false-positive rate has not been measured yet.
 
 ## How the trifecta check works, and its limits
 
 **Fixes, not just alarms.** Every trifecta finding lists the smallest fixes. Within one config, a trifecta exists exactly when all three layers (untrusted source, private data, sink) are present, so the cheapest fix is whichever layer the fewest servers supply: take those servers out of the config, or move them to a separate agent profile, and every path is broken. This is exact, not a heuristic (it is tested against exhaustive search). It also says when moving does not help: a server that can do all three on its own, such as a mail server that reads, stores and sends, has to be restricted or removed. In pull request comments, the first suggestion is the fewest servers *this change adds* whose removal makes the trifecta disappear.
 
-Capability tags come from a fixed keyword table ([capabilities.py](src/agentaudit/capabilities.py)) matched against each server's name, command, arguments, URL host and tool names. There is no inference, and every finding prints the keyword behind each tag, so you can check it line by line.
+Capability tags come from a fixed keyword table ([capabilities.py](https://github.com/AbdulRehman19-bit/agentaudit/blob/main/src/agentaudit/capabilities.py)) matched against each server's name, command, arguments, URL host and tool names. There is no inference, and every finding prints the keyword behind each tag, so you can check it line by line.
 
 That makes it explainable, but not precise:
 
@@ -214,11 +214,11 @@ In short: agentaudit's bet is **offline, deterministic and explainable, with app
 
 ## Writing a rule
 
-A rule is a function from one server to findings. See [CONTRIBUTING.md](CONTRIBUTING.md); a first rule takes about ten minutes.
+A rule is a function from one server to findings. See [CONTRIBUTING.md](https://github.com/AbdulRehman19-bit/agentaudit/blob/main/CONTRIBUTING.md); a first rule takes about ten minutes.
 
 ## Status
 
-Pre-release. v0.2 added SARIF/JSON/Markdown/badge output and a GitHub Action; v0.3 adds the opt-in local classifier. See [docs/DESIGN.md](docs/DESIGN.md).
+Pre-release. v0.2 added SARIF/JSON/Markdown/badge output and a GitHub Action; v0.3 adds the opt-in local classifier. See [docs/DESIGN.md](https://github.com/AbdulRehman19-bit/agentaudit/blob/main/docs/DESIGN.md).
 
 ## Licence
 

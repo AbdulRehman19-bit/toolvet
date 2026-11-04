@@ -1,0 +1,46 @@
+name: Publish to PyPI
+
+# Runs when a version tag such as v0.7.0 is pushed. Uses PyPI Trusted Publishing, so there is no
+# token to store: PyPI must be told once that this repository and workflow may publish
+# (project settings -> Publishing -> add a trusted publisher; environment name: pypi).
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: The tag must match the package version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          if [ "v$version" != "$TAG" ]; then
+            echo "Tag $TAG does not match the package version $version" >&2
+            exit 1
+          fi
+      - run: uv sync
+      - run: uv run ruff check .
+      - run: uv run pytest --cov-fail-under=90
+      - run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: astral-sh/setup-uv@v5
+      - run: uv publish

@@ -12,7 +12,7 @@ cd agentaudit && uv sync
 uv run agentaudit scan /path/to/your/repo
 ```
 
-agentaudit is not on PyPI yet.
+Or install it from PyPI: `pipx run agentaudit scan`.
 
 ## Guides
 

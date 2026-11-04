@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.3] - 2026-11-04
+
+### Changed
+- Packaging for PyPI: SPDX licence expression, authors, keywords, classifiers and project URLs; README links and images are absolute so they render on PyPI; install instructions describe `pipx run agentaudit`.
+- Added a publish workflow (`publish.yml`) that uploads to PyPI with Trusted Publishing when a version tag is pushed, after checking the tag matches the package version and the tests pass.
+
 ## [0.6.2] - 2026-11-04
 
 ### Fixed
