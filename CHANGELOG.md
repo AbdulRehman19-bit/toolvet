@@ -3,6 +3,20 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-11-04
+
+### Added
+- `scan --classify`: an optional local ONNX classifier (20 KB, install `agentaudit[ml]`) that scores tool descriptions for prompt-injection and exfiltration wording. Runs offline. Long descriptions are scored in overlapping windows.
+- Advisory findings: heuristic findings are marked `advisory`, shown as such, reported as SARIF `note`, and never fail `scan` or the badge, whatever `--fail-on` says.
+- `classify` input for the GitHub Action.
+- `training/` scripts to rebuild the datasets, retrain, export to ONNX and evaluate, plus `docs/classifier.md` with measured accuracy.
+
+### Fixed
+- Terminal output rendered text from your configs as Rich markup. A server or tool name such as `mcp:notes:time` was shown with an emoji in place of `:notes:` and crashed `scan` on consoles that cannot encode it (for example redirected output on Windows); names containing `[...]` were dropped or raised errors. User-controlled text is now printed literally.
+
+### Notes
+- Accuracy is measured on synthetic and small hand-written data. False-positive rate: 0.8% on held-out synthetic data, 11.4% (95% interval 4.5% to 26%) on the hand-written set. A real-world rate has not been measured yet; see `docs/classifier.md`.
+
 ## [0.2.0] - 2026-11-04
 
 ### Added
