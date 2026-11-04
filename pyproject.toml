@@ -19,7 +19,16 @@ agentaudit = "agentaudit.cli:app"
 # Third-party packages register rules in this group; built-ins load directly.
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.5"]
+dev = [
+    "numpy>=2.4.6",
+    "onnx>=1.23.2",
+    "onnxruntime>=1.31.1",
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.5",
+    "scikit-learn>=1.9.1",
+    "skl2onnx>=1.20.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -35,3 +44,6 @@ addopts = "--cov=agentaudit --cov-report=term-missing"
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+
+[tool.ruff.lint.per-file-ignores]
+"training/*" = ["ISC004"]
