@@ -14,11 +14,11 @@ import json
 from pathlib import Path
 
 import numpy as np
+from skl2onnx import convert_sklearn
+from skl2onnx.common.data_types import FloatTensorType
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
-from skl2onnx import convert_sklearn
-from skl2onnx.common.data_types import FloatTensorType
 
 from agentaudit.ml.features import DIM, featurize
 
@@ -99,8 +99,8 @@ def main() -> None:
         "threshold": round(threshold, 6),
         "C": c,
         "target_validation_fpr": TARGET_FPR,
-        "train_rows": int(len(y_fit)),
-        "validation_rows": int(len(y_val)),
+        "train_rows": len(y_fit),
+        "validation_rows": len(y_val),
     }
     (MODEL_DIR / "model.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     size_kb = (MODEL_DIR / "model.onnx").stat().st_size / 1024
