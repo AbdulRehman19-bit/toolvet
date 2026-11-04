@@ -9,7 +9,7 @@ from typing import Annotated
 
 import typer
 from rich.console import Console
-from rich.markup import escape
+from rich.markup import escape as _markup_escape
 from rich.table import Table
 from rich.text import Text
 
@@ -38,6 +38,13 @@ from toolvet.policy import (
 )
 from toolvet.reporters import to_badge, to_json, to_markdown, to_sarif
 from toolvet.snapshot import SNAPSHOT_NAME, apply_snapshot, write_snapshot
+from toolvet.textsafe import visible
+
+
+def escape(text: str) -> str:
+    """Escape Rich markup and neutralise terminal control characters in untrusted text."""
+    return _markup_escape(visible(text))
+
 
 app = typer.Typer(help="Audit AI agent tool (MCP) configurations.", no_args_is_help=True)
 # emoji=False: names like `mcp:notes:time` contain `:notes:`, which Rich would render as an
@@ -102,7 +109,12 @@ def _findings_table(findings: list[Finding]) -> Table:
             label += " (advisory)"
         if f.waiver:
             label += " (waived)"
-        table.add_row(Text(label, style=style), f.rule_id, Text(where), Text(message))
+        table.add_row(
+            Text(visible(label), style=style),
+            f.rule_id,
+            Text(visible(where)),
+            Text(visible(message)),
+        )
     return table
 
 
@@ -164,10 +176,10 @@ def _warn_about_waivers(policy: Policy, findings: list[Finding]) -> None:
 
 def _emit(text: str, output: Path | None) -> None:
     if output:
-        output.write_text(text, encoding="utf-8")
+        output.write_text(visible(text), encoding="utf-8")
         console.print(f"Wrote {escape(str(output))}")
     else:
-        typer.echo(text, nl=False)
+        typer.echo(visible(text), nl=False)
 
 
 @app.command()
@@ -222,7 +234,12 @@ def scan(
         table.add_column(column)
     for s in servers:
         launch = s.url or " ".join(filter(None, [s.command, *s.args]))
-        table.add_row(Text(s.client), Text(s.name), Text(launch), Text(str(s.source)))
+        table.add_row(
+            Text(visible(s.client)),
+            Text(visible(s.name)),
+            Text(visible(launch)),
+            Text(visible(str(s.source))),
+        )
     console.print(table)
 
     findings = _audit(servers, classify, policy)
@@ -284,7 +301,7 @@ def verify(
         return
     console.print(f"[red]{len(drift)} change(s) since agent.lock was written:[/]")
     for item in drift:
-        console.print(f"  - {item}", markup=False)
+        console.print(visible(f"  - {item}"), markup=False)
     raise typer.Exit(1)
 
 
@@ -321,7 +338,7 @@ def snapshot(
         raise typer.Exit(1)
     console.print("This will run:")
     for s in runnable:
-        console.print(f"  {s.id}: {' '.join([s.command or '', *s.args])}", markup=False)
+        console.print(visible(f"  {s.id}: {' '.join([s.command or '', *s.args])}"), markup=False)
     if not yes and not typer.confirm("Launch these commands?"):
         raise typer.Exit(1)
     tools_by_server, failed = {}, 0
@@ -368,10 +385,10 @@ def graph(
         to_mermaid(capability_graph) if format is GraphFormat.mermaid else to_svg(capability_graph)
     )
     if output:
-        output.write_text(text, encoding="utf-8")
+        output.write_text(visible(text), encoding="utf-8")
         console.print(f"Wrote {escape(str(output))}")
     else:
-        typer.echo(text, nl=False)
+        typer.echo(visible(text), nl=False)
 
 
 class DiffFormat(str, Enum):
@@ -453,12 +470,12 @@ def diff_command(
     else:
         text = diff_text(result, fail_on)
     if output:
-        output.write_text(text, encoding="utf-8")
+        output.write_text(visible(text), encoding="utf-8")
         console.print(f"Wrote {escape(str(output))}")
     elif format is DiffFormat.terminal:
-        console.print(text, markup=False, soft_wrap=True)
+        console.print(visible(text), markup=False, soft_wrap=True)
     else:
-        typer.echo(text, nl=False)
+        typer.echo(visible(text), nl=False)
     if result.introduces_risk(fail_on):
         raise typer.Exit(1)
 

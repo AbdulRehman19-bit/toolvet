@@ -39,6 +39,15 @@ TOPICS = [
     "cursor",
     "ai-agents",
     "ai-agent",
+    # added to widen the pool when the first 8 topics yielded only 83 repos with a config
+    "mcp-servers",
+    "modelcontextprotocol",
+    "claude",
+    "claude-desktop",
+    "cursor-ai",
+    "llm-agents",
+    "agentic-ai",
+    "ai-tools",
 ]
 CONFIG_PATHS = [".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json"]
 MAX_BYTES = 200_000

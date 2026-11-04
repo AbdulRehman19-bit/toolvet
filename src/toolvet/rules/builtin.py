@@ -52,6 +52,17 @@ _OBVIOUS_PLACEHOLDER = re.compile(
 )
 
 
+_GIT_SOURCE = re.compile(r"^(git\+|git://|github:|gitlab:|bitbucket:)")
+_COMMIT = re.compile(r"^[0-9a-f]{7,40}$", re.IGNORECASE)
+_RELEASE_TAG = re.compile(r"^v?\d+(\.\d+)*[-+.\w]*$")
+
+
+def _git_ref(spec: str) -> str | None:
+    """The trailing `@ref` or `#ref` of a git source. `git@host` in an ssh URL is not a ref."""
+    match = re.search(r"[@#]([^/@#]+)$", spec)
+    return match.group(1) if match else None
+
+
 def _is_placeholder(value: str) -> bool:
     """True for an empty value, a variable reference, or an obvious stand-in for a secret."""
     return bool(_PLACEHOLDER.match(value) or _OBVIOUS_PLACEHOLDER.match(value))
@@ -126,6 +137,16 @@ def secret_env(server: Server) -> Iterator[Hit]:
 def unpinned_package(server: Server) -> Iterator[Hit]:
     spec = _package_spec(server)
     if not spec or spec.startswith((".", "/", "~")) or re.match(r"^[A-Za-z]:[\\/]", spec):
+        return
+    if _GIT_SOURCE.match(spec):
+        # A branch name is not a pin: it moves. Only a commit or a release tag is.
+        ref = _git_ref(spec)
+        if not (ref and (_COMMIT.match(ref) or _RELEASE_TAG.match(ref))):
+            yield Hit(
+                Severity.MEDIUM,
+                f"Git source {spec} is not pinned to a commit or release tag",
+                evidence=[spec],
+            )
         return
     version = spec.rsplit("@", 1)[1] if spec.rfind("@") > 0 else None
     if version is None and "==" in spec:

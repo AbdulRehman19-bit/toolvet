@@ -133,3 +133,41 @@ def test_npx_without_dash_y_is_a_low_note_about_local_copies(args):
 def test_fetched_latest_is_still_medium(command, args):
     findings = [f for f in run_rules([make(command=command, args=args)]) if f.rule_id == "TV003"]
     assert [f.severity.value for f in findings] == ["medium"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "git+https://github.com/o/r@0123456789abcdef0123456789abcdef01234567",
+        "git+https://github.com/o/r@abc1234",
+        "git+https://github.com/o/r@v1.2.3",
+        "git+https://github.com/o/r@1.2.3",
+        "github:o/r#abc1234",
+        "github:o/r#v2.0.0",
+    ],
+)
+def test_git_sources_pinned_to_a_commit_or_release_tag_are_fine(source):
+    assert "TV003" not in rules(make(command="uvx", args=["--from", source, "tool"]))
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "git+https://github.com/o/r@main",
+        "git+https://github.com/o/r@master",
+        "git+https://github.com/o/r@develop",
+        "git+https://github.com/o/r",
+        "git+ssh://git@github.com/o/r",
+        "git+ssh://git@github.com/o/r@main",
+        "github:o/r#main",
+        "github:o/r",
+    ],
+)
+def test_a_git_branch_or_no_ref_is_not_a_pin(source):
+    findings = [
+        f
+        for f in run_rules([make(command="uvx", args=["--from", source, "tool"])])
+        if f.rule_id == "TV003"
+    ]
+    assert [f.severity.value for f in findings] == ["medium"]
+    assert "commit or release tag" in findings[0].message

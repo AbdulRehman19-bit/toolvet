@@ -21,7 +21,7 @@ The server is launched through `sh`, `bash`, `cmd`, `powershell` and similar, or
 An `env` entry whose name contains KEY, TOKEN, SECRET, PASSWORD or CREDENTIAL holds a literal value. Config files get committed and synced. **Fix:** reference the variable (`${env:NAME}` or your client's equivalent). The report shows the variable name, never the value.
 
 ## TV003 Unpinned package
-`npx -y`, `uvx`, `bunx`, `pipx run`, `pnpm dlx` and similar fetch the latest version on each launch, so an upstream change reaches you without review (medium). **Fix:** pin a version: `pkg@1.2.3` or `pkg==1.2.3`. `@latest` counts as unpinned.
+`npx -y`, `uvx`, `bunx`, `pipx run`, `pnpm dlx` and similar fetch the latest version on each launch (a git source counts as pinned only when it names a commit or a release tag, not a branch), so an upstream change reaches you without review (medium). **Fix:** pin a version: `pkg@1.2.3` or `pkg==1.2.3`. `@latest` counts as unpinned.
 
 Two cases are deliberately *not* reported as unpinned fetches. `uv run`, `npm run`, `pnpm run` and similar run your own project's code, so they are not checked. `npx tool` with no version and no `-y` cannot download in a non-interactive launch, so it only works if `tool` is already installed locally (where your lockfile pins it); that is reported as a low-severity note instead.
 
