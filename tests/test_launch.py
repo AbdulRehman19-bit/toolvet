@@ -92,9 +92,9 @@ def test_unpinned_package_hidden_behind_a_wrapper_is_found():
 
 def test_wrapper_shell_does_not_tag_the_server_as_private_data_and_sink():
     wrapped = make(
-        name="context7",
+        name="helper",
         command="/bin/bash",
-        args=["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"],
+        args=["-l", "-c", "exec npx -y @acme/helper-mcp@latest"],
     )
     assert tag_server(wrapped) == {}
 
@@ -116,3 +116,21 @@ def test_url_scheme_is_not_an_http_keyword():
 def test_findings_still_name_the_original_server():
     wrapped = make(name="blender", command="cmd", args=["/c", "uvx", "blender-mcp"])
     assert {f.server for f in run_rules([wrapped])} == {"t:blender"}
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("atlassian", {"untrusted_source", "private_data", "sink"}),
+        ("linear", {"untrusted_source", "private_data", "sink"}),
+        ("sentry", {"untrusted_source", "private_data"}),
+        ("context7", {"untrusted_source"}),
+        ("deepwiki", {"untrusted_source"}),
+        ("desktop-commander", {"private_data", "sink"}),
+        ("neon", {"private_data"}),
+        ("grafana", {"private_data"}),
+        ("posthog", {"private_data"}),
+    ],
+)
+def test_popular_servers_found_missing_in_a_real_world_scan(name, expected):
+    assert {c.value for c in tag_server(make(name=name))} == expected
