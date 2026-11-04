@@ -26,7 +26,20 @@ Decision: start the research scan and private disclosures in week 3, after v0.1.
 The public launch is gated on the 30-day window ending, not on the calendar.
 v0.2 and v0.3 ship on schedule regardless.
 
-### 3. Open questions closed
+### 3. Prior art check (2026-11-04) changes the positioning
+The proposal assumed other scanners check servers one at a time and marked its `mcp-scan`
+comparison "unverified". Checked against primary sources, that was wrong:
+- `mcp-scan` is now Snyk Agent Scan (`snyk/agent-scan`, PyPI `snyk-agent-scan`). It needs a
+  `SNYK_TOKEN` and sends tool names and descriptions to Snyk's API.
+- Invariant's Toxic Flow Analysis already models cross-tool flows with the lethal-trifecta
+  framing, and the original MCP-Scan pinned tool hashes.
+So "cross-server trifecta graph" is NOT a unique feature. The defensible differences are:
+offline-by-default with no account, deterministic and explainable tagging, an
+`agent.lock` committed to the repo and reviewed in pull requests, SARIF and an Action, and
+community rule plugins. The README comparison table states this; launch copy must not claim
+that other scanners miss cross-server combinations.
+
+### 4. Open questions closed
 - Licence: MIT.
 - First three clients: Claude Desktop, Cursor, VS Code.
 - Name: `agentaudit` is free on PyPI (checked 2026-11-04).

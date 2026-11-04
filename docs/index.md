@@ -27,6 +27,10 @@ agentaudit is not on PyPI yet.
 
 **The rug pull.** A server ships a harmless tool description, you approve it, and a later update changes it. `agentaudit lock` records hashes and `agentaudit verify` fails when anything drifts.
 
+## How it compares
+
+Snyk Agent Scan (formerly `mcp-scan`) also analyses cross-tool flows. agentaudit is the offline, deterministic option whose approvals live in your repo. See the [comparison table](https://github.com/AbdulRehman19-bit/agentaudit#how-it-compares).
+
 ## Principles
 
 - `scan` runs offline and never executes anything.

@@ -128,6 +128,24 @@ That makes it explainable, but not precise:
 - Servers combine only when they live in the same config file, which is treated as one agent session.
 - Findings are heuristic. Treat AA100 as "look at this", not proof of a vulnerability.
 
+## How it compares
+
+agentaudit is not the first MCP scanner, and the trifecta idea is not new. The closest tool is [Snyk Agent Scan](https://github.com/snyk/agent-scan) (formerly Invariant Labs' `mcp-scan`), which does cross-tool "toxic flow" analysis using the same lethal-trifecta framing. If you want broader coverage (agent skills, 14+ risk types, hosted analysis), use it.
+
+What agentaudit does differently, based on both projects' public READMEs and blog posts as of 2026-11-04 (check their current docs; "not documented" below does not mean "absent"):
+
+| | agentaudit | Snyk Agent Scan |
+|---|---|---|
+| Network | Offline by default; nothing leaves your machine | Needs a `SNYK_TOKEN`; sends tool names, descriptions and server config signatures to Snyk's API (secrets redacted); no local-only mode documented |
+| Running servers | `scan` never executes anything; `snapshot --introspect` asks first | Starts stdio servers (per-server consent by default) |
+| Cross-tool flow analysis | Yes: fixed keyword table, source to private data to sink within one config, every hop explained | Yes: flow graph with trust, sensitivity and sink properties; part of the analysis runs through their API |
+| Approval pinning | `agent.lock` is committed to your repo and reviewed in pull requests; `verify` fails CI | The original MCP-Scan pinned tool hashes; the current README does not document it, and its state file defaults to `~/.mcp-scan` |
+| CI output | SARIF, JSON, Markdown, badge, GitHub Action | `--ci` exit code and `--json`; SARIF and an Action are not documented in the README |
+| Extending | Python entry-point rule plugins | Plugins not documented; the README says it does not accept external contributions |
+| Licence | MIT | Apache-2.0 |
+
+In short: agentaudit's bet is **offline, deterministic and explainable, with approvals that live in version control**. That is a narrower tool, not a better one for every case.
+
 ## Writing a rule
 
 A rule is a function from one server to findings. See [CONTRIBUTING.md](CONTRIBUTING.md); a first rule takes about ten minutes.
