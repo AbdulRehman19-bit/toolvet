@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 
 from agentaudit.capabilities import tag_server
-from agentaudit.diff import Diff, launch_line
+from agentaudit.diff import Diff, TrifectaChange, launch_line
 from agentaudit.models import Finding, Server, Severity
 from agentaudit.policy import Waiver
 
@@ -70,6 +71,25 @@ def _waiver_note(waiver: dict[str, str]) -> str:
     return f"{waiver['reason']} (owner {waiver['owner']}, expires {waiver['expires']})"
 
 
+def _fix_items(change: TrifectaChange, name: Callable[[str], str]) -> list[str]:
+    """Fix suggestions for a trifecta; `name` formats a server id (code span in Markdown)."""
+    items = []
+    if change.drop_hint:
+        names = ", ".join(name(s) for s in change.drop_hint)
+        if change.drop_movable:
+            items.append(
+                f"Drop or move the server(s) this change adds ({names}): without them there is "
+                "no trifecta."
+            )
+        else:
+            items.append(
+                f"Remove the server(s) this change adds ({names}), or restrict their tools. "
+                "They can do all three on their own, so moving them elsewhere does not help."
+            )
+    items += [option.describe(name) for option in change.fix_options]
+    return items
+
+
 def _waiver_text(w: Waiver) -> str:
     return f"{w.label()}: {w.reason} (owner {w.owner}, expires {w.expires})"
 
@@ -87,6 +107,8 @@ def to_text(diff: Diff, fail_on: Severity) -> str:
         out.append(
             f"{_trifecta_sentence(t.kind)} in {t.config}{extra}: {', '.join(t.servers)}{accepted}"
         )
+        if items := _fix_items(t, str):
+            out += ["  Smallest fixes:"] + [f"    - {item}" for item in items]
     if diff.new_findings:
         out += ["", "New findings:"] + [f"  {_finding_line(f)}" for f in diff.new_findings]
     if diff.added:
@@ -157,9 +179,10 @@ def to_markdown(diff: Diff, fail_on: Severity) -> str:
             lines.append(f"\nAccepted by policy: {_code(_waiver_note(t.waiver))}")
         elif t.kind != "resolved":
             lines.append(
-                "\nUntrusted input can reach private data and a channel that sends data out. "
-                "Consider moving one of these servers to a separate agent profile."
+                "\nUntrusted input can reach private data and a channel that sends data out."
             )
+            if items := _fix_items(t, _code):
+                lines += ["", "Smallest fixes:", ""] + [f"- {item}" for item in items]
     if diff.new_findings:
         lines += [
             "",
@@ -264,6 +287,9 @@ def to_json(diff: Diff, fail_on: Severity) -> str:
                 "servers": t.servers,
                 "added_servers": t.added_servers,
                 "waiver": t.waiver,
+                "drop_hint": t.drop_hint,
+                "drop_movable": t.drop_movable,
+                "fixes": [o.describe() for o in t.fix_options],
             }
             for t in diff.trifectas
         ],

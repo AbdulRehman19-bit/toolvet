@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import itertools
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from agentaudit.audit import audit
 from agentaudit.capabilities import tag_server
+from agentaudit.fixes import FixOption, has_trifecta, trifecta_fixes
 from agentaudit.models import Finding, Server, Severity
 from agentaudit.policy import Policy, Waiver, apply_policy
 from agentaudit.rules.builtin import _CRED_FLAG, _CRED_URL
@@ -66,6 +68,10 @@ class TrifectaChange:
     servers: list[str]
     added_servers: list[str] = field(default_factory=list)
     waiver: dict[str, str] | None = None  # set when the active policy accepts this trifecta
+    fix_options: list[FixOption] = field(default_factory=list)  # smallest fixes, best first
+    # The fewest servers this change adds whose removal makes the trifecta disappear.
+    drop_hint: list[str] = field(default_factory=list)
+    drop_movable: bool = True  # False if those servers are a trifecta on their own
 
 
 @dataclass
@@ -175,6 +181,41 @@ def _trifectas(
     return changes
 
 
+def _relative(server: Server, root: Path) -> str:
+    try:
+        return server.source.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return server.source.name
+
+
+def _suggest_fixes(
+    trifectas: list[TrifectaChange], head: list[Server], added: list[Server], head_root: Path
+) -> None:
+    """Attach the smallest fixes to each unaccepted new or widened trifecta, in place.
+
+    For a trifecta this change creates, also look for the fewest servers the change added whose
+    removal makes it disappear: that is the most direct advice for the author.
+    """
+    added_ids = {s.id for s in added}
+    for change in trifectas:
+        if change.kind == "resolved" or change.waiver is not None:
+            continue
+        scope = [s for s in head if _relative(s, head_root) == change.config]
+        options = next(iter(trifecta_fixes(scope).values()), [])
+        change.fix_options = options[:3]
+        if change.kind != "new":
+            continue
+        mine = [s for s in scope if s.id in added_ids]
+        for size in range(1, len(mine) + 1):
+            for combo in itertools.combinations(mine, size):
+                gone = {s.id for s in combo}
+                if not has_trifecta([s for s in scope if s.id not in gone]):
+                    change.drop_hint = sorted(gone)
+                    change.drop_movable = not has_trifecta(list(combo))
+                    return
+            # no subset of this size is enough; try larger ones
+
+
 def policy_change(base: Policy, head: Policy) -> PolicyChange:
     notes = []
     if base.fail_on != head.fail_on:
@@ -239,6 +280,10 @@ def compute_diff(
     head_findings = apply_policy(audit(head), active)
     base_keys = {_key(f) for f in base_findings if f.rule_id != "AA100"}
     head_keys = {_key(f) for f in head_findings if f.rule_id != "AA100"}
+    trifectas = _trifectas(base_findings, head_findings, base_root, head_root)
+    _suggest_fixes(
+        trifectas, head, [new[sid] for sid in sorted(new.keys() - old.keys())], head_root
+    )
     return Diff(
         added=[new[sid] for sid in sorted(new.keys() - old.keys())],
         removed=[old[sid] for sid in sorted(old.keys() - new.keys())],
@@ -251,7 +296,7 @@ def compute_diff(
         resolved_findings=[
             f for f in base_findings if f.rule_id != "AA100" and _key(f) not in head_keys
         ],
-        trifectas=_trifectas(base_findings, head_findings, base_root, head_root),
+        trifectas=trifectas,
         policy=policy_change(base_policy, head_policy),
         policy_mode=policy_mode,
     )
