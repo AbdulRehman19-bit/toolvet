@@ -26,3 +26,16 @@ def test_classifier_doc_matches_shipped_model():
     )
     text = (DOCS / "classifier.md").read_text(encoding="utf-8")
     assert f"**{meta['threshold']:.3f}**" in text
+
+
+def test_policy_doc_example_is_a_valid_policy():
+    import re
+    import tomllib
+    from datetime import date
+
+    from agentaudit.policy import parse_policy
+
+    text = (DOCS / "policy.md").read_text(encoding="utf-8")
+    block = re.search(r"```toml\n(.*?)```", text, re.DOTALL).group(1)
+    policy = parse_policy(tomllib.loads(block), today=date(2026, 11, 4))
+    assert len(policy.waivers) == 2 and policy.max_waiver_days == 180

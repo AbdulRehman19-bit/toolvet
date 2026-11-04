@@ -18,6 +18,7 @@
 | `sarif-file` | `agentaudit.sarif` | Where the SARIF report is written |
 | `diff` | `true` | On pull requests, compare with the base and report capability changes |
 | `comment` | `true` | Post the diff as one comment, updated in place (needs `pull-requests: write`) |
+| `diff-policy` | `base` | Which `agent.policy.toml` suppresses findings in the diff: `base`, `head` or `none` (see [policy](policy)) |
 | `classify` | `false` | Also run the advisory ML classifier (see [accuracy](classifier)) |
 | `upload-sarif` | `false` | Upload to code scanning (needs `security-events: write`) |
 

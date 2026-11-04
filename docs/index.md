@@ -18,6 +18,7 @@ agentaudit is not on PyPI yet.
 
 - [Rules reference](rules): what each rule finds and how to fix it
 - [Using it in CI](ci): the GitHub Action, SARIF and lockfile verification
+- [Policy and waivers](policy): accept risk with an owner and an expiry date
 - [Classifier accuracy](classifier): the optional ML classifier and how well it works
 - [Contributing](https://github.com/AbdulRehman19-bit/agentaudit/blob/main/CONTRIBUTING.md): write a rule in ten minutes
 

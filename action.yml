@@ -27,6 +27,9 @@ inputs:
   diff:
     description: On pull requests, compare MCP configs with the base and report what changed in capabilities.
     default: "true"
+  diff-policy:
+    description: Which agent.policy.toml suppresses findings in the diff - base (a change cannot waive its own risk), head, or none.
+    default: base
   comment:
     description: Post the diff as one pull request comment, updated in place (needs pull-requests write; the job summary is always written).
     default: "true"
@@ -96,11 +99,12 @@ runs:
         INPUT_PATH: ${{ inputs.path }}
         FAIL_ON: ${{ inputs.fail-on }}
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        DIFF_POLICY: ${{ inputs.diff-policy }}
       run: |
         set +e
         git -C "$INPUT_PATH" fetch --no-tags --depth=1 origin "$BASE_SHA"
         agentaudit diff "$INPUT_PATH" --base "$BASE_SHA" --format markdown \
-          --output agentaudit-diff.md --fail-on "$FAIL_ON"
+          --output agentaudit-diff.md --fail-on "$FAIL_ON" --policy "$DIFF_POLICY"
         code=$?
         echo "code=$code" >> "$GITHUB_OUTPUT"
         if [ -f agentaudit-diff.md ]; then

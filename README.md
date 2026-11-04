@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: AbdulRehman19-bit/agentaudit@v0.4.0
+      - uses: AbdulRehman19-bit/agentaudit@v0.5.0
         with:
           fail-on: high
           upload-sarif: "true"   # shows findings in the Security tab
@@ -137,6 +137,29 @@ Commit the SVG and regenerate it in CI. It shows `passing`, a count of low-risk 
 
 Supported configs: Claude Desktop, Cursor, VS Code (`.vscode/mcp.json`) and a generic `.mcp.json`.
 
+## Waivers and policy
+
+Accept a finding once, with a name and an expiry date, instead of switching the check off. `agent.policy.toml` lives in your repo:
+
+```toml
+fail_on = "high"
+
+[[waiver]]
+rule = "AA100"            # lethal trifecta: list exactly the servers you reviewed
+servers = ["mcp:fetch", "mcp:filesystem", "mcp:github"]
+reason = "agent runs in a container with no real data mounted"
+owner = "bob"
+expires = 2027-01-15
+```
+
+- Every waiver needs a **reason, an owner and an expiry**; expired waivers stop applying and the finding returns.
+- A trifecta waiver covers **only the servers you listed**. Add a server and it no longer applies, so a widened trifecta cannot slip through.
+- Waived findings stay in the report (and in SARIF as suppressions) with their reason.
+- **A pull request cannot waive its own risk:** `diff` applies the base branch's policy, and lists any waivers the PR adds for a reviewer to approve.
+- `agentaudit policy check` reports expired, soon-to-expire and unused waivers.
+
+Details: [docs/policy.md](docs/policy.md).
+
 ## Optional: local ML classifier
 
 A small ONNX model (20 KB) scores tool descriptions for prompt-injection and exfiltration wording. It runs on your machine, sends nothing anywhere, and is **advisory**: its findings are labelled `advisory` and never fail CI.
@@ -172,6 +195,7 @@ What agentaudit does differently, based on both projects' public READMEs and blo
 | Cross-tool flow analysis | Yes: fixed keyword table, source to private data to sink within one config, every hop explained | Yes: flow graph with trust, sensitivity and sink properties; part of the analysis runs through their API |
 | Approval pinning | `agent.lock` is committed to your repo and reviewed in pull requests; `verify` fails CI | The original MCP-Scan pinned tool hashes; the current README does not document it, and its state file defaults to `~/.mcp-scan` |
 | CI output | SARIF, JSON, Markdown, badge, GitHub Action | `--ci` exit code and `--json`; SARIF and an Action are not documented in the README |
+| Accepting risk | Waivers in `agent.policy.toml`: reason, owner, expiry, exact server set; a PR cannot waive itself | Not documented in the README |
 | Extending | Python entry-point rule plugins | Plugins not documented; the README says it does not accept external contributions |
 | Licence | MIT | Apache-2.0 |
 
