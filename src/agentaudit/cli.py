@@ -61,9 +61,14 @@ def main(
     """agentaudit: find dangerous tool combinations and pin what was approved."""
 
 
+def counts(finding: Finding) -> bool:
+    """Whether a finding can fail a build: not advisory and not covered by a waiver."""
+    return not finding.advisory and finding.waiver is None
+
+
 def _fails(findings: list[Finding], fail_on: Severity) -> bool:
     """True if a non-advisory finding is at least `fail_on`. Advisory findings never fail."""
-    return any(not f.advisory and f.severity.rank >= fail_on.rank for f in findings)
+    return any(counts(f) and f.severity.rank >= fail_on.rank for f in findings)
 
 
 def _findings_table(findings: list[Finding]) -> Table:
@@ -77,7 +82,16 @@ def _findings_table(findings: list[Finding]) -> Table:
         message = f.message
         if f.rule_id == "AA100":
             message += "\n" + "\n".join(f"  {line}" for line in f.evidence)
-        label = f"{f.severity.value} (advisory)" if f.advisory else f.severity.value
+        if f.waiver:
+            message += (
+                f"\n  waived by {f.waiver['owner']} until {f.waiver['expires']}: "
+                f"{f.waiver['reason']}"
+            )
+        label = f.severity.value
+        if f.advisory:
+            label += " (advisory)"
+        if f.waiver:
+            label += " (waived)"
         table.add_row(Text(label, style=style), f.rule_id, Text(where), Text(message))
     return table
 

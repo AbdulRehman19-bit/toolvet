@@ -58,3 +58,5 @@ class Finding(BaseModel):
     evidence: list[str] = Field(default_factory=list)
     # Heuristic findings (such as the ML classifier) are shown but never fail CI.
     advisory: bool = False
+    # Set when an unexpired waiver in agent.policy.toml covers this finding.
+    waiver: dict[str, str] | None = None

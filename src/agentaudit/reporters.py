@@ -50,6 +50,7 @@ def to_json(servers: list[Server], findings: list[Finding], root: Path) -> str:
                 "config": _uri(f.source, root),
                 "evidence": f.evidence,
                 "advisory": f.advisory,
+                "waiver": f.waiver,
             }
             for f in _ordered(findings)
         ],
@@ -68,6 +69,14 @@ def to_sarif(findings: list[Finding], root: Path) -> str:
             "message": {"text": f"{f.server}: {f.message}"},
             "properties": {"server": f.server, "tool": f.tool, "evidence": f.evidence},
         }
+        if f.waiver:
+            result["suppressions"] = [
+                {
+                    "kind": "external",
+                    "justification": f.waiver["reason"],
+                    "properties": {"owner": f.waiver["owner"], "expires": f.waiver["expires"]},
+                }
+            ]
         uri = _uri(f.source, root)
         if uri:
             result["locations"] = [{"physicalLocation": {"artifactLocation": {"uri": uri}}}]
@@ -105,7 +114,8 @@ def to_markdown(servers: list[Server], findings: list[Finding]) -> str:
     for f in _ordered(findings):
         where = f"{f.server}:{f.tool}" if f.tool else f.server
         message = f.message.replace("|", "\\|")
-        lines.append(f"| {f.severity.value} | {f.rule_id} | `{where}` | {message} |")
+        level = f"{f.severity.value} (waived)" if f.waiver else f.severity.value
+        lines.append(f"| {level} | {f.rule_id} | `{where}` | {message} |")
     for f in _ordered(findings):
         if f.rule_id == "AA100":
             lines += ["", f"### Trifecta paths ({f.server})", ""]
@@ -114,7 +124,9 @@ def to_markdown(servers: list[Server], findings: list[Finding]) -> str:
 
 
 def to_badge(findings: list[Finding], fail_on: Severity = Severity.HIGH) -> str:
-    failing = sum(1 for f in findings if not f.advisory and f.severity.rank >= fail_on.rank)
+    failing = sum(
+        1 for f in findings if not f.advisory and not f.waiver and f.severity.rank >= fail_on.rank
+    )
     if failing:
         text, color = f"{failing} issue{'s' if failing != 1 else ''}", "#c53030"
     elif findings:
