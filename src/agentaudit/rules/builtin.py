@@ -9,10 +9,54 @@ from pathlib import PurePath
 from agentaudit.models import Server, Severity
 from agentaudit.rules import Hit, rule
 
-_RUNNERS = {"npx", "bunx", "uvx", "pipx", "pnpm", "yarn", "npm", "bun", "uv"}
+_ALWAYS_FETCH = {"npx", "bunx", "uvx"}
+# Runners that fetch a package only through one subcommand. `npm run`, `pnpm run`, `uv run`
+# and the like execute local project code, so they are not "unpinned packages".
+_FETCH_SUBCOMMANDS = {
+    "pipx": {"run"},
+    "pnpm": {"dlx"},
+    "yarn": {"dlx"},
+    "npm": {"exec", "x"},
+    "bun": {"x"},
+}
+# Flags that take a value, so the value is not mistaken for the package name.
+_VALUE_FLAGS = {
+    "--python",
+    "-p",
+    "--with",
+    "-w",
+    "--index-url",
+    "--extra-index-url",
+    "--index",
+    "--directory",
+    "-C",
+    "--cache-dir",
+    "--prefix",
+    "--registry",
+}
 _SHELLS = {"sh", "bash", "zsh", "fish", "dash", "cmd", "powershell", "pwsh"}
 _SECRET_KEY = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)", re.IGNORECASE)
 _PLACEHOLDER = re.compile(r"^\s*($|\$|\$\{|<|\{\{|%.*%$|env:)")
+# Values that are obviously stand-ins, such as ANTHROPIC_API_KEY_HERE or your-api-key.
+_OBVIOUS_PLACEHOLDER = re.compile(
+    r"""^\s*(
+        your[_\- ].*
+        | .*[_\- ]here
+        | x{3,} | \*{3,} | \.{3,}
+        | \[.*\]
+        | (sk|pk|key|token)[_\-]?(\.{3,}|x{3,}|\*+)
+        | change[_\- ]?me | replace[_\- ]?me | placeholder | redacted | dummy | todo
+        | insert[_\- ].* | paste[_\- ].*
+    )\s*$""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def _is_placeholder(value: str) -> bool:
+    """True for an empty value, a variable reference, or an obvious stand-in for a secret."""
+    return bool(_PLACEHOLDER.match(value) or _OBVIOUS_PLACEHOLDER.match(value))
+
+
 _ROOT_PATHS = {"/", "~", "*", "**", "/home", "/Users", "/etc", "/root", "/var"}
 _DRIVE_ROOT = re.compile(r"^[A-Za-z]:[\\/]?$")
 
@@ -25,16 +69,30 @@ def _command_name(server: Server) -> str:
 
 def _package_spec(server: Server) -> str | None:
     """Return the package a runner like npx or uvx will fetch, if there is one."""
-    if _command_name(server) not in _RUNNERS:
+    name, args = _command_name(server), list(server.args)
+    positional = [(i, a) for i, a in enumerate(args) if not a.startswith("-")]
+    if name in _ALWAYS_FETCH:
+        rest = args
+    elif name in _FETCH_SUBCOMMANDS:
+        if not positional or positional[0][1] not in _FETCH_SUBCOMMANDS[name]:
+            return None
+        rest = args[positional[0][0] + 1 :]
+    elif name == "uv":  # only `uv tool run <pkg>` fetches; `uv run ...` runs local code
+        if [a for _, a in positional[:2]] != ["tool", "run"]:
+            return None
+        rest = args[positional[1][0] + 1 :]
+    else:
         return None
-    args = list(server.args)
-    if "--from" in args and args.index("--from") + 1 < len(args):
-        return args[args.index("--from") + 1]
-    skip = {"run", "dlx", "x", "exec", "tool"}
-    for arg in args:
-        if arg.startswith("-") or arg in skip:
-            continue
-        return arg
+    if "--from" in rest and rest.index("--from") + 1 < len(rest):
+        return rest[rest.index("--from") + 1]
+    skip_next = False
+    for arg in rest:
+        if skip_next:
+            skip_next = False
+        elif arg in _VALUE_FLAGS:
+            skip_next = True
+        elif not arg.startswith("-"):
+            return arg
     return None
 
 
@@ -56,7 +114,7 @@ def shell_access(server: Server) -> Iterator[Hit]:
 @rule("AA002", "Secrets in env vars")
 def secret_env(server: Server) -> Iterator[Hit]:
     for key, value in server.env.items():
-        if _SECRET_KEY.search(key) and not _PLACEHOLDER.match(value):
+        if _SECRET_KEY.search(key) and not _is_placeholder(value):
             yield Hit(
                 Severity.HIGH,
                 f"Env var {key} holds a literal secret in the config; reference it instead",
@@ -145,7 +203,7 @@ def arg_credentials(server: Server) -> Iterator[Hit]:
         elif _CRED_FLAG.match(arg):
             has_value = "=" in arg or (i + 1 < len(args) and not args[i + 1].startswith("-"))
             value = arg.split("=", 1)[1] if "=" in arg else (args[i + 1] if has_value else "")
-            if has_value and not _PLACEHOLDER.match(value):
+            if has_value and not _is_placeholder(value):
                 yield Hit(
                     Severity.HIGH,
                     f"Flag {arg.split('=')[0]} passes a literal secret on the command line",
