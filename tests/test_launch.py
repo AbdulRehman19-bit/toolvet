@@ -121,8 +121,8 @@ def test_findings_still_name_the_original_server():
 @pytest.mark.parametrize(
     "name, expected",
     [
-        ("atlassian", {"untrusted_source", "private_data", "sink"}),
-        ("linear", {"untrusted_source", "private_data", "sink"}),
+        ("atlassian", {"untrusted_source", "private_data"}),
+        ("linear", {"untrusted_source", "private_data"}),
         ("sentry", {"untrusted_source", "private_data"}),
         ("context7", {"untrusted_source"}),
         ("deepwiki", {"untrusted_source"}),

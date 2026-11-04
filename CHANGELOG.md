@@ -3,6 +3,19 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.2] - 2026-11-04
+
+### Fixed
+Found by hand-checking verdicts on real public configs:
+- Launch wrappers (`cmd /c npx ...`, `bash -l -c "exec npx ..."`) are now seen through. Previously the wrapper shell was reported as high-severity shell access (AA001), its `bash` keyword tagged every wrapped server as private data plus a sink (which produced a false trifecta), and an unpinned package behind the wrapper was missed. A shell counts as a launcher only when its payload is one simple command; pipes, `;`, `&&`, redirects and substitutions are still treated as real shell use.
+- A URL scheme is no longer a keyword: `http://localhost:3001` in an argument no longer tags a server as an HTTP sink.
+
+### Added
+- More widely used servers are recognised: ticketing and wiki tools (`atlassian`, `confluence`, `linear`: untrusted source and private data), `sentry`, documentation and content sources (`context7`, `deepwiki`, `huggingface`, `arxiv`, `markitdown`, `webclaw`), file and terminal access (`desktop-commander`), and database and observability servers (`neon`, `planetscale`, `turso`, `snowflake`, `bigquery`, `dynamodb`, `clickhouse`, `grafana`, `posthog`, `datadog`, `prometheus`, `greptile`).
+
+### Notes
+- On a test of 137 servers from 83 popular public repos, the table recognised 36% of servers, so a clean scan means "nothing recognised", not "safe". The README now says so.
+
 ## [0.6.1] - 2026-11-04
 
 ### Fixed

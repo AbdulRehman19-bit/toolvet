@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: AbdulRehman19-bit/agentaudit@v0.6.1
+      - uses: AbdulRehman19-bit/agentaudit@v0.6.2
         with:
           fail-on: high
           upload-sarif: "true"   # shows findings in the Security tab
@@ -187,6 +187,8 @@ Capability tags come from a fixed keyword table ([capabilities.py](src/agentaudi
 That makes it explainable, but not precise:
 
 - A server is tagged by keyword, not by what it actually does. Expect false positives (a server with "search" in its name counts as untrusted input) and false negatives (an unrecognised server gets no tags).
+- **Most servers are not recognised, so "no findings" does not mean "safe".** When tested on 137 servers from 83 popular public repos, the table recognised 36% of them (50 of 137). Everything else gets no tags and can never take part in a trifecta. Treat a clean scan as "nothing recognised", and add tags for servers you use (see CONTRIBUTING).
+- Launch wrappers such as `cmd /c npx ...` and `bash -c "exec npx ..."` are seen through, so the wrapped command is what gets checked and tagged. A shell running anything more than one simple command is still treated as a real shell.
 - Servers combine only when they live in the same config file, which is treated as one agent session.
 - Findings are heuristic. Treat AA100 as "look at this", not proof of a vulnerability.
 

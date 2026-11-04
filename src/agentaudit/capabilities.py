@@ -19,11 +19,11 @@ KEYWORDS: dict[str, frozenset[Capability]] = {
     "browser": frozenset({S, K}),
     "puppeteer": frozenset({S, K}),
     "playwright": frozenset({S, K}),
-    # ticketing and wiki tools: text written by other people, company data, and the ability
-    # to comment or create
-    "atlassian": frozenset({S, P, K}),
-    "confluence": frozenset({S, P, K}),
-    "linear": frozenset({S, P, K}),
+    # ticketing and wiki tools: text written by other people, plus company data. Not tagged as
+    # a sink: a comment or ticket normally stays inside the organisation, unlike email or HTTP.
+    "atlassian": frozenset({S, P}),
+    "confluence": frozenset({S, P}),
+    "linear": frozenset({S, P}),
     # error tracking: strings that end users control, plus internal data
     "sentry": frozenset({S, P}),
     # public content pulled into the agent's context
