@@ -1,6 +1,6 @@
 [project]
 name = "agentaudit"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Find dangerous combinations of AI agent tools before attackers do, and pin what was approved."
 readme = "README.md"
 license = { text = "MIT" }
