@@ -10,6 +10,7 @@ import typer
 from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
+from rich.text import Text
 
 from agentaudit import __version__
 from agentaudit.audit import audit
@@ -25,8 +26,10 @@ from agentaudit.reporters import to_badge, to_json, to_markdown, to_sarif
 from agentaudit.snapshot import SNAPSHOT_NAME, apply_snapshot, write_snapshot
 
 app = typer.Typer(help="Audit AI agent tool (MCP) configurations.", no_args_is_help=True)
-console = Console()
-err_console = Console(stderr=True)
+# emoji=False: names like `mcp:notes:time` contain `:notes:`, which Rich would render as an
+# emoji (and crash on consoles that cannot encode it). highlight=False keeps output plain.
+console = Console(emoji=False, highlight=False)
+err_console = Console(stderr=True, emoji=False, highlight=False)
 
 _STYLES = {
     Severity.INFO: "dim",
@@ -69,7 +72,7 @@ def _findings_table(findings: list[Finding]) -> Table:
         if f.rule_id == "AA100":
             message += "\n" + "\n".join(f"  {line}" for line in f.evidence)
         label = f"{f.severity.value} (advisory)" if f.advisory else f.severity.value
-        table.add_row(f"[{style}]{label}[/]", f.rule_id, where, message)
+        table.add_row(Text(label, style=style), f.rule_id, Text(where), Text(message))
     return table
 
 
@@ -117,7 +120,7 @@ def _audit(servers: list[Server], classify: bool) -> list[Finding]:
 def _emit(text: str, output: Path | None) -> None:
     if output:
         output.write_text(text, encoding="utf-8")
-        console.print(f"Wrote {output}")
+        console.print(f"Wrote {escape(str(output))}")
     else:
         typer.echo(text, nl=False)
 
@@ -162,7 +165,7 @@ def scan(
         table.add_column(column)
     for s in servers:
         launch = s.url or " ".join(filter(None, [s.command, *s.args]))
-        table.add_row(s.client, s.name, launch, str(s.source))
+        table.add_row(Text(s.client), Text(s.name), Text(launch), Text(str(s.source)))
     console.print(table)
 
     findings = _audit(servers, classify)
@@ -215,7 +218,7 @@ def verify(
     try:
         approved = read_lock(path / LOCK_NAME)
     except LockError as exc:
-        console.print(f"[red]{exc}[/]")
+        console.print(f"[red]{escape(str(exc))}[/]")
         raise typer.Exit(2) from exc
     drift = verify_lock(approved, _project_servers(path, user))
     if not drift:
@@ -252,7 +255,9 @@ def snapshot(
     runnable = [s for s in servers if s.command]
     for s in servers:
         if not s.command:
-            console.print(f"[yellow]Skipping {s.id}: remote servers cannot be introspected.[/]")
+            console.print(
+                f"[yellow]Skipping {escape(s.id)}: remote servers cannot be introspected.[/]"
+            )
     if not runnable:
         console.print("No stdio servers to introspect.")
         raise typer.Exit(1)
@@ -267,9 +272,9 @@ def snapshot(
             tools_by_server[s.id] = introspect(s, timeout=timeout)
         except IntrospectError as exc:
             failed += 1
-            console.print(f"[red]{s.id}: {exc}[/]")
+            console.print(f"[red]{escape(s.id)}: {escape(str(exc))}[/]")
         else:
-            console.print(f"{s.id}: {len(tools_by_server[s.id])} tool(s)")
+            console.print(f"{escape(s.id)}: {len(tools_by_server[s.id])} tool(s)")
     if tools_by_server:
         write_snapshot(path / SNAPSHOT_NAME, tools_by_server)
         console.print(f"Wrote {SNAPSHOT_NAME}. Run `agentaudit lock` to pin it.")
@@ -306,6 +311,6 @@ def graph(
     )
     if output:
         output.write_text(text, encoding="utf-8")
-        console.print(f"Wrote {output}")
+        console.print(f"Wrote {escape(str(output))}")
     else:
         typer.echo(text, nl=False)
