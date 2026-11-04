@@ -16,6 +16,7 @@
 | `fail-on` | `high` | Fail at or above this severity |
 | `verify` | `true` | Run `agentaudit verify` when `agent.lock` exists |
 | `sarif-file` | `agentaudit.sarif` | Where the SARIF report is written |
+| `classify` | `false` | Also run the advisory ML classifier (see [accuracy](classifier)) |
 | `upload-sarif` | `false` | Upload to code scanning (needs `security-events: write`) |
 
 The SARIF report is always written and uploaded even when the scan fails, so findings show up in the Security tab.

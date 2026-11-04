@@ -18,6 +18,9 @@ inputs:
   sarif-file:
     description: Where to write the SARIF report.
     default: agentaudit.sarif
+  classify:
+    description: Also score tool descriptions with the local ML classifier (advisory, never fails the build).
+    default: "false"
   upload-sarif:
     description: Upload the SARIF report to GitHub code scanning (needs security-events write).
     default: "false"
@@ -36,17 +39,28 @@ runs:
 
     - name: Install agentaudit
       shell: bash
-      run: python -m pip install --quiet "${{ github.action_path }}"
+      env:
+        CLASSIFY: ${{ inputs.classify }}
+      run: |
+        if [ "$CLASSIFY" = "true" ]; then
+          python -m pip install --quiet "${{ github.action_path }}[ml]"
+        else
+          python -m pip install --quiet "${{ github.action_path }}"
+        fi
 
     - name: Scan
       id: scan
       shell: bash
+      env:
+        CLASSIFY: ${{ inputs.classify }}
       run: |
         set +e
-        agentaudit scan "${{ inputs.path }}" --no-user --format sarif \
+        extra=""
+        [ "$CLASSIFY" = "true" ] && extra="--classify"
+        agentaudit scan "${{ inputs.path }}" --no-user $extra --format sarif \
           --output "${{ inputs.sarif-file }}" --fail-on "${{ inputs.fail-on }}"
         echo "code=$?" >> "$GITHUB_OUTPUT"
-        agentaudit scan "${{ inputs.path }}" --no-user --fail-on "${{ inputs.fail-on }}" || true
+        agentaudit scan "${{ inputs.path }}" --no-user $extra --fail-on "${{ inputs.fail-on }}" || true
 
     - name: Upload SARIF
       if: always() && inputs.upload-sarif == 'true'

@@ -106,6 +106,18 @@ Commit the SVG and regenerate it in CI. It shows `passing`, a count of low-risk 
 
 Supported configs: Claude Desktop, Cursor, VS Code (`.vscode/mcp.json`) and a generic `.mcp.json`.
 
+## Optional: local ML classifier
+
+A small ONNX model (20 KB) scores tool descriptions for prompt-injection and exfiltration wording. It runs on your machine, sends nothing anywhere, and is **advisory**: its findings are labelled `advisory` and never fail CI.
+
+```bash
+pip install 'agentaudit[ml]'
+agentaudit snapshot --introspect     # the classifier needs real tool descriptions
+agentaudit scan --classify
+```
+
+Measured accuracy, with the caveats that matter, is in [docs/classifier.md](docs/classifier.md). In short: on held-out synthetic data the false-positive rate is 0.8%, but on a small hand-written set closer to real descriptions it is **11.4%** (95% interval 4.5% to 26%). The training data is synthetic, so treat it as a second opinion next to the deterministic rules. A real-world false-positive rate has not been measured yet.
+
 ## How the trifecta check works, and its limits
 
 Capability tags come from a fixed keyword table ([capabilities.py](src/agentaudit/capabilities.py)) matched against each server's name, command, arguments, URL host and tool names. There is no inference, and every finding prints the keyword behind each tag, so you can check it line by line.
@@ -122,7 +134,7 @@ A rule is a function from one server to findings. See [CONTRIBUTING.md](CONTRIBU
 
 ## Status
 
-Pre-release. v0.2 adds SARIF/JSON/Markdown/badge output and a GitHub Action. Next: an opt-in local classifier (v0.3). See [docs/DESIGN.md](docs/DESIGN.md).
+Pre-release. v0.2 added SARIF/JSON/Markdown/badge output and a GitHub Action; v0.3 adds the opt-in local classifier. See [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Licence
 
