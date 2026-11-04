@@ -101,3 +101,56 @@ def test_tool_snapshot_is_pinned_and_rug_pull_detected(tmp_path):
     result = runner.invoke(app, ["verify", str(tmp_path)])
     assert result.exit_code == 1
     assert "tool changed" in result.output
+
+
+def _fake_repo(tmp_path, *modes):
+    import json
+    import sys
+
+    fake = str(Path(__file__).parent / "fake_mcp_server.py")
+    servers = {
+        f"s{i}": {"command": sys.executable, "args": [fake, mode]} for i, mode in enumerate(modes)
+    }
+    (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": servers}), encoding="utf-8")
+
+
+def test_snapshot_requires_opt_in(tmp_path):
+    _fake_repo(tmp_path, "ok")
+    result = runner.invoke(app, ["snapshot", str(tmp_path)])
+    assert result.exit_code == 2
+    assert "--introspect" in result.output
+    assert not (tmp_path / "agent.tools.json").exists()
+
+
+def test_snapshot_then_lock_pins_tools(tmp_path):
+    _fake_repo(tmp_path, "ok")
+    result = runner.invoke(app, ["snapshot", str(tmp_path), "--introspect", "--yes"])
+    assert result.exit_code == 0, result.output
+    assert "2 tool(s)" in result.output
+    assert (tmp_path / "agent.tools.json").is_file()
+    result = runner.invoke(app, ["lock", str(tmp_path)])
+    assert "1 with tool definitions" in result.output
+
+
+def test_snapshot_confirmation_can_be_declined(tmp_path):
+    _fake_repo(tmp_path, "ok")
+    result = runner.invoke(app, ["snapshot", str(tmp_path), "--introspect"], input="n\n")
+    assert result.exit_code == 1
+    assert not (tmp_path / "agent.tools.json").exists()
+
+
+def test_snapshot_reports_failures_but_keeps_successes(tmp_path):
+    _fake_repo(tmp_path, "ok", "init-error")
+    result = runner.invoke(app, ["snapshot", str(tmp_path), "--introspect", "-y"])
+    assert result.exit_code == 1
+    assert "initialize failed" in result.output
+    assert "mcp:s0" in (tmp_path / "agent.tools.json").read_text(encoding="utf-8")
+
+
+def test_snapshot_skips_remote_servers(tmp_path):
+    (tmp_path / ".mcp.json").write_text(
+        '{"mcpServers": {"r": {"url": "https://x.test/mcp"}}}', encoding="utf-8"
+    )
+    result = runner.invoke(app, ["snapshot", str(tmp_path), "--introspect", "-y"])
+    assert result.exit_code == 1
+    assert "remote servers cannot be introspected" in result.output

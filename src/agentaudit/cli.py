@@ -12,10 +12,11 @@ from rich.table import Table
 from agentaudit import __version__
 from agentaudit.audit import audit
 from agentaudit.discovery import discover
+from agentaudit.introspect import IntrospectError, introspect
 from agentaudit.lockfile import LOCK_NAME, LockError, read_lock, write_lock
 from agentaudit.lockfile import verify as verify_lock
 from agentaudit.models import Finding, Server, Severity
-from agentaudit.snapshot import SNAPSHOT_NAME, apply_snapshot
+from agentaudit.snapshot import SNAPSHOT_NAME, apply_snapshot, write_snapshot
 
 app = typer.Typer(help="Audit AI agent tool (MCP) configurations.", no_args_is_help=True)
 console = Console()
@@ -142,3 +143,53 @@ def verify(
     for item in drift:
         console.print(f"  - {item}", markup=False)
     raise typer.Exit(1)
+
+
+@app.command()
+def snapshot(
+    path: Annotated[Path, typer.Argument(help="Repository to snapshot.")] = Path("."),
+    introspect_servers: Annotated[
+        bool,
+        typer.Option(
+            "--introspect",
+            help="Launch each configured server and record its tools (required).",
+        ),
+    ] = False,
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip the confirmation prompt.")] = False,
+    timeout: Annotated[float, typer.Option(help="Seconds to wait for each server.")] = 30.0,
+    user: Annotated[bool, _USER_OPTION] = False,
+) -> None:
+    """Record every server's real tool definitions in agent.tools.json (runs the servers)."""
+    if not introspect_servers:
+        console.print(
+            "snapshot launches your configured MCP servers to read their tool definitions. "
+            "Nothing runs unless you opt in: re-run with --introspect."
+        )
+        raise typer.Exit(2)
+    servers = discover(path, home=Path.home() if user else None)
+    runnable = [s for s in servers if s.command]
+    for s in servers:
+        if not s.command:
+            console.print(f"[yellow]Skipping {s.id}: remote servers cannot be introspected.[/]")
+    if not runnable:
+        console.print("No stdio servers to introspect.")
+        raise typer.Exit(1)
+    console.print("This will run:")
+    for s in runnable:
+        console.print(f"  {s.id}: {' '.join([s.command or '', *s.args])}", markup=False)
+    if not yes and not typer.confirm("Launch these commands?"):
+        raise typer.Exit(1)
+    tools_by_server, failed = {}, 0
+    for s in runnable:
+        try:
+            tools_by_server[s.id] = introspect(s, timeout=timeout)
+        except IntrospectError as exc:
+            failed += 1
+            console.print(f"[red]{s.id}: {exc}[/]")
+        else:
+            console.print(f"{s.id}: {len(tools_by_server[s.id])} tool(s)")
+    if tools_by_server:
+        write_snapshot(path / SNAPSHOT_NAME, tools_by_server)
+        console.print(f"Wrote {SNAPSHOT_NAME}. Run `agentaudit lock` to pin it.")
+    if failed:
+        raise typer.Exit(1)
