@@ -3,6 +3,13 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-11-04
+
+### Added
+- Smallest-fix suggestions on every lethal-trifecta finding. Within one config a trifecta exists exactly when all three layers are present, so the cheapest fix is the layer the fewest servers supply; removing or moving those servers breaks every path. The result is exact (tested against exhaustive search) and says when moving does not help, for a server that can do all three on its own.
+- Pull request comments (`diff`) list the fixes, led by the fewest servers the change adds whose removal makes a new trifecta disappear. Server names are rendered inside code spans.
+- Fixes appear in terminal output, JSON (`fix`), SARIF (`properties.suggestions`) and Markdown reports. Accepted (waived) trifectas get no fix suggestions.
+
 ## [0.5.0] - 2026-11-04
 
 ### Added

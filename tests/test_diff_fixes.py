@@ -55,7 +55,11 @@ def test_new_trifecta_points_at_the_server_the_change_adds(repo):
     write(repo, "search", "postgres", "smtp")
     t = trifecta(repo)
     assert t["kind"] == "new" and t["drop_hint"] == ["mcp:smtp"] and t["drop_movable"]
-    assert t["fixes"] and any("mcp:smtp" in f for f in t["fixes"])
+    # the other layers are still offered, but the same fix is not listed twice
+    assert t["fixes"] and not any(
+        "Move `mcp:smtp`" in f or "Move mcp:smtp" in f for f in t["fixes"]
+    )
+    assert not any(f.startswith("Move mcp:smtp") for f in t["fixes"])
 
 
 def test_hint_names_only_the_servers_that_are_needed(repo):

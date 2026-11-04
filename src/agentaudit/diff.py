@@ -212,6 +212,8 @@ def _suggest_fixes(
                 if not has_trifecta([s for s in scope if s.id not in gone]):
                     change.drop_hint = sorted(gone)
                     change.drop_movable = not has_trifecta(list(combo))
+                    # The hint already says this; do not list the same fix twice.
+                    change.fix_options = [o for o in change.fix_options if set(o.servers) != gone]
                     return
             # no subset of this size is enough; try larger ones
 
