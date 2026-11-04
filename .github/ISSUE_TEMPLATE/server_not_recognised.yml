@@ -1,0 +1,38 @@
+name: Server not recognised
+description: toolvet gives a server no capability tags (or the wrong ones).
+labels: [keyword-table]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        toolvet tags servers from a fixed keyword table, and it misses many servers. Each report
+        like this makes the table better. Adding a keyword is a good first contribution, see
+        CONTRIBUTING.md.
+  - type: input
+    id: server
+    attributes:
+      label: Server name or package
+      placeholder: "@acme/jira-mcp"
+    validations:
+      required: true
+  - type: checkboxes
+    id: capabilities
+    attributes:
+      label: What can it do?
+      description: Tick everything that applies.
+      options:
+        - label: Reads content other people can write (web pages, tickets, email, chat)
+        - label: Reads private data (files, databases, internal documents, secrets)
+        - label: Sends data out (HTTP, email, chat, git push, uploads)
+  - type: textarea
+    id: why
+    attributes:
+      label: How do you know?
+      description: A link to its documentation or source is ideal.
+    validations:
+      required: true
+  - type: input
+    id: current
+    attributes:
+      label: What toolvet says now
+      placeholder: "no tags / tagged as sink only"

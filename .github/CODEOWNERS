@@ -1,0 +1,10 @@
+# Every change is reviewed by the maintainer. The security-sensitive parts are listed so a
+# reviewer is always requested for them, even if the catch-all is changed later.
+*                                @AbdulRehman19-bit
+/src/toolvet/textsafe.py         @AbdulRehman19-bit
+/src/toolvet/diff_render.py      @AbdulRehman19-bit
+/src/toolvet/policy.py           @AbdulRehman19-bit
+/src/toolvet/gitbase.py          @AbdulRehman19-bit
+/src/toolvet/introspect.py       @AbdulRehman19-bit
+/action.yml                      @AbdulRehman19-bit
+/.github/workflows/              @AbdulRehman19-bit

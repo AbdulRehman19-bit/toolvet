@@ -37,7 +37,7 @@ from toolvet.policy import (
     policy_problems,
 )
 from toolvet.reporters import to_badge, to_json, to_markdown, to_sarif
-from toolvet.snapshot import SNAPSHOT_NAME, apply_snapshot, write_snapshot
+from toolvet.snapshot import SNAPSHOT_NAME, write_snapshot
 from toolvet.textsafe import visible
 
 
@@ -254,9 +254,7 @@ def scan(
 
 def _project_servers(path: Path, user: bool) -> list[Server]:
     """Servers for lock/verify: project configs plus tool snapshot, user configs opt-in."""
-    servers = discover(path, home=Path.home() if user else None)
-    snapshot = path / SNAPSHOT_NAME
-    return apply_snapshot(servers, snapshot) if snapshot.is_file() else servers
+    return load_servers(path, home=Path.home() if user else None)
 
 
 _USER_OPTION = typer.Option(

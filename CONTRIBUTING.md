@@ -53,6 +53,19 @@ my_rule = "my_package.rules:my_rule"
 - **Client parsers** live in [discovery.py](src/toolvet/discovery.py). Add a fixture under `tests/fixtures/<client>/` with the parser.
 - **Capability keywords** live in [capabilities.py](src/toolvet/capabilities.py). Say in the PR why the keyword implies the capability.
 
+## Where to start
+
+- Issues labelled **good first issue** are scoped to an afternoon: a rule, a batch of server
+  keywords, or a config format for another client.
+- Missed a server? Use the "Server not recognised" issue form. Adding it is a few lines in
+  `capabilities.py`, and it improves every scan.
+- Found a security problem? Report it privately, see [SECURITY.md](SECURITY.md).
+
 ## Pull requests
 
-Keep PRs small, include tests, and run `uv run ruff format .` first.
+Keep PRs small, include tests, and run `uv run ruff format .` first. The pull request template
+has the checklist.
+
+Text from scanned files is untrusted. Anything you print or write from it must go through
+`toolvet.textsafe.visible` (terminals) or a code span (Markdown), and tests should feed it
+hostile input.

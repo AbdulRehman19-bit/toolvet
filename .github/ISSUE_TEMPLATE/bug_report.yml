@@ -1,0 +1,42 @@
+name: Bug report
+description: toolvet crashed, gave a wrong result, or printed something misleading.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. If this is a **security** problem (for example text from a config
+        affecting your terminal), please report it privately instead, using the link on the
+        "new issue" page.
+  - type: input
+    id: version
+    attributes:
+      label: toolvet version
+      description: Output of `toolvet --version`.
+      placeholder: toolvet 0.7.0
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command you ran
+      placeholder: toolvet scan . --format sarif
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Minimal config that reproduces it
+      description: Remove real secrets and private URLs first. Names of servers are fine.
+      render: json
+  - type: input
+    id: platform
+    attributes:
+      label: Python version and operating system
+      placeholder: Python 3.12, Windows 11

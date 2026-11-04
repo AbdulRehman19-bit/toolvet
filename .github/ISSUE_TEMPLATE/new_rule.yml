@@ -1,0 +1,36 @@
+name: New rule idea
+description: Suggest a check for a risky pattern in MCP configs.
+labels: [rule]
+body:
+  - type: textarea
+    id: pattern
+    attributes:
+      label: The risky pattern
+      description: Show a config snippet that should be flagged, and one that should not.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is it risky?
+      description: What can go wrong, and who is affected?
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Suggested severity
+      options: [low, medium, high]
+    validations:
+      required: true
+  - type: checkboxes
+    id: deterministic
+    attributes:
+      label: Deterministic?
+      description: A rule that can fail a build must not guess.
+      options:
+        - label: It can be decided from the config alone, without running anything
+          required: true
+  - type: markdown
+    attributes:
+      value: A rule takes about ten minutes to write. See "Write your first rule" in CONTRIBUTING.md.

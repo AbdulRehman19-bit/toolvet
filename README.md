@@ -1,5 +1,10 @@
 # toolvet
 
+[![CI](https://github.com/AbdulRehman19-bit/toolvet/actions/workflows/ci.yml/badge.svg)](https://github.com/AbdulRehman19-bit/toolvet/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/toolvet)](https://pypi.org/project/toolvet/)
+[![Python](https://img.shields.io/pypi/pyversions/toolvet)](https://pypi.org/project/toolvet/)
+[![Licence: MIT](https://img.shields.io/pypi/l/toolvet)](https://github.com/AbdulRehman19-bit/toolvet/blob/main/LICENSE)
+
 Find dangerous combinations of AI agent tools (MCP servers) before attackers do, and pin what you approved so silent changes fail CI.
 
 Every MCP server you install can look safe on its own. toolvet shows what they can do **together**.
@@ -220,7 +225,11 @@ A rule is a function from one server to findings. See [CONTRIBUTING.md](https://
 
 ## Status
 
-Pre-release. v0.2 added SARIF/JSON/Markdown/badge output and a GitHub Action; v0.3 adds the opt-in local classifier. See [docs/DESIGN.md](https://github.com/AbdulRehman19-bit/toolvet/blob/main/docs/DESIGN.md).
+Beta (0.x): the command line, file formats and rule ids can still change before 1.0, and every change is listed in the [changelog](https://github.com/AbdulRehman19-bit/toolvet/blob/main/CHANGELOG.md).
+
+What works today: offline scanning of Claude Desktop, Cursor, VS Code and `.mcp.json` configs, trifecta detection with smallest-fix suggestions, `agent.lock` pinning, pull request capability diffs, waivers and policy, SARIF/JSON/Markdown reports, a GitHub Action, and an optional local classifier.
+
+What to keep in mind: the capability table recognises only about a third of real servers (see the limits above), the classifier's false-positive rate on realistic text is about 11% ([accuracy](https://github.com/AbdulRehman19-bit/toolvet/blob/main/docs/classifier.md)), and only the clients listed above are read. Missing a server or a client? That is the most useful kind of issue or pull request. Design notes: [docs/DESIGN.md](https://github.com/AbdulRehman19-bit/toolvet/blob/main/docs/DESIGN.md). Report vulnerabilities privately: [SECURITY.md](https://github.com/AbdulRehman19-bit/toolvet/blob/main/SECURITY.md).
 
 ## Licence
 
