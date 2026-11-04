@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
@@ -12,6 +13,8 @@ from rich.table import Table
 from agentaudit import __version__
 from agentaudit.audit import audit
 from agentaudit.discovery import discover
+from agentaudit.graph import build_graph
+from agentaudit.graph_export import to_mermaid, to_svg
 from agentaudit.introspect import IntrospectError, introspect
 from agentaudit.lockfile import LOCK_NAME, LockError, read_lock, write_lock
 from agentaudit.lockfile import verify as verify_lock
@@ -193,3 +196,37 @@ def snapshot(
         console.print(f"Wrote {SNAPSHOT_NAME}. Run `agentaudit lock` to pin it.")
     if failed:
         raise typer.Exit(1)
+
+
+class GraphFormat(str, Enum):
+    mermaid = "mermaid"
+    svg = "svg"
+
+
+@app.command()
+def graph(
+    path: Annotated[Path, typer.Argument(help="Repository or directory to scan.")] = Path("."),
+    format: Annotated[GraphFormat, typer.Option("--format", help="Output format.")] = (
+        GraphFormat.mermaid
+    ),
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write to a file instead of stdout.")
+    ] = None,
+    user: Annotated[
+        bool, typer.Option("--user/--no-user", help="Also scan user-level client configs.")
+    ] = True,
+) -> None:
+    """Export the capability graph as Mermaid text or SVG."""
+    servers = _project_servers(path, user)
+    capability_graph = build_graph(servers)
+    if not capability_graph.nodes:
+        console.print("No capabilities found; nothing to draw.")
+        raise typer.Exit(1)
+    text = (
+        to_mermaid(capability_graph) if format is GraphFormat.mermaid else to_svg(capability_graph)
+    )
+    if output:
+        output.write_text(text, encoding="utf-8")
+        console.print(f"Wrote {output}")
+    else:
+        typer.echo(text, nl=False)
