@@ -28,6 +28,14 @@ from agentaudit.lockfile import LOCK_NAME, LockError, read_lock, write_lock
 from agentaudit.lockfile import verify as verify_lock
 from agentaudit.ml.classifier import Classifier, MLUnavailable, classify_servers
 from agentaudit.models import Finding, Server, Severity
+from agentaudit.policy import (
+    POLICY_NAME,
+    Policy,
+    PolicyError,
+    apply_policy,
+    load_policy,
+    policy_problems,
+)
 from agentaudit.reporters import to_badge, to_json, to_markdown, to_sarif
 from agentaudit.snapshot import SNAPSHOT_NAME, apply_snapshot, write_snapshot
 
@@ -120,10 +128,10 @@ def _render(
     return to_badge(findings, fail_on)
 
 
-def _audit(servers: list[Server], classify: bool) -> list[Finding]:
+def _audit(servers: list[Server], classify: bool, policy: Policy) -> list[Finding]:
     findings = audit(servers)
     if not classify:
-        return findings
+        return apply_policy(findings, policy)
     try:
         classifier = Classifier()
     except MLUnavailable as exc:
@@ -134,7 +142,22 @@ def _audit(servers: list[Server], classify: bool) -> list[Finding]:
             "[yellow]No tool descriptions to classify. Run `agentaudit snapshot --introspect` "
             "to record them.[/]"
         )
-    return [*findings, *classify_servers(servers, classifier)]
+    return apply_policy([*findings, *classify_servers(servers, classifier)], policy)
+
+
+def _load_policy(path: Path, explicit: Path | None) -> Policy:
+    """Load agent.policy.toml (or an explicit file). Exits 2 on an invalid policy."""
+    try:
+        return load_policy(explicit or path / POLICY_NAME)
+    except PolicyError as exc:
+        err_console.print(escape(str(exc)), style="red")
+        raise typer.Exit(2) from exc
+
+
+def _warn_about_waivers(policy: Policy, findings: list[Finding]) -> None:
+    for problem in policy_problems(policy, findings):
+        label = {"expired": "red", "expiring": "yellow", "unused": "yellow"}[problem.kind]
+        err_console.print(f"[{label}]policy: {escape(problem.message)}[/]")
 
 
 def _emit(text: str, output: Path | None) -> None:
@@ -152,8 +175,17 @@ def scan(
         bool, typer.Option("--user/--no-user", help="Also scan user-level client configs.")
     ] = True,
     fail_on: Annotated[
-        Severity, typer.Option("--fail-on", help="Exit 1 if a finding is at least this severe.")
-    ] = Severity.HIGH,
+        Severity | None,
+        typer.Option(
+            "--fail-on",
+            help="Exit 1 if a finding is at least this severe (default: the policy's fail_on, "
+            "else high).",
+        ),
+    ] = None,
+    policy_file: Annotated[
+        Path | None,
+        typer.Option("--policy", help=f"Policy file (default: {POLICY_NAME} in the scanned path)."),
+    ] = None,
     format: Annotated[
         ReportFormat, typer.Option("--format", help="Report format.")
     ] = ReportFormat.terminal,
@@ -170,9 +202,12 @@ def scan(
     ] = False,
 ) -> None:
     """Discover MCP servers, check rules, build the capability graph and report."""
+    policy = _load_policy(path, policy_file)
+    fail_on = fail_on or policy.fail_on or Severity.HIGH
     servers = _project_servers(path, user)
     if format is not ReportFormat.terminal:
-        findings = _audit(servers, classify)
+        findings = _audit(servers, classify, policy)
+        _warn_about_waivers(policy, findings)
         _emit(_render(format, servers, findings, path, fail_on), output)
         if _fails(findings, fail_on):
             raise typer.Exit(1)
@@ -188,11 +223,12 @@ def scan(
         table.add_row(Text(s.client), Text(s.name), Text(launch), Text(str(s.source)))
     console.print(table)
 
-    findings = _audit(servers, classify)
+    findings = _audit(servers, classify, policy)
     if findings:
         console.print(_findings_table(findings))
     else:
         console.print("No findings.")
+    _warn_about_waivers(policy, findings)
     if _fails(findings, fail_on):
         raise typer.Exit(1)
 
@@ -390,4 +426,40 @@ def diff_command(
     else:
         typer.echo(text, nl=False)
     if result.introduces_risk(fail_on):
+        raise typer.Exit(1)
+
+
+policy_app = typer.Typer(help="Inspect agent.policy.toml.", no_args_is_help=True)
+app.add_typer(policy_app, name="policy")
+
+
+@policy_app.command("check")
+def policy_check(
+    path: Annotated[Path, typer.Argument(help="Repository containing the policy.")] = Path("."),
+    policy_file: Annotated[
+        Path | None, typer.Option("--policy", help="Policy file to check.")
+    ] = None,
+    strict: Annotated[
+        bool, typer.Option("--strict", help="Also fail on waivers that are expiring or unused.")
+    ] = False,
+) -> None:
+    """List invalid, expired, soon-to-expire and unused waivers. Exit 1 on expired ones."""
+    policy = _load_policy(path, policy_file)
+    if not policy.waivers and not policy.severity and policy.fail_on is None:
+        console.print(f"No {POLICY_NAME} found, or it is empty.")
+        return
+    findings = audit(_project_servers(path, user=False))
+    problems = policy_problems(policy, findings)
+    console.print(
+        f"{len(policy.waivers)} waiver(s), {len(policy.severity)} severity override(s)"
+        + (f", fail_on {policy.fail_on.value}" if policy.fail_on else "")
+    )
+    for w in policy.waivers:
+        console.print(
+            f"  {escape(w.label())}: {escape(w.reason)} (owner {escape(w.owner)}, expires {w.expires})"
+        )
+    for problem in problems:
+        console.print(f"[yellow]{problem.kind}:[/] {escape(problem.message)}")
+    failing = {"expired", "expiring", "unused"} if strict else {"expired"}
+    if any(p.kind in failing for p in problems):
         raise typer.Exit(1)
