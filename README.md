@@ -210,7 +210,9 @@ What agentaudit does differently, based on both projects' public READMEs and blo
 | Extending | Python entry-point rule plugins | Plugins not documented; the README says it does not accept external contributions |
 | Licence | MIT | Apache-2.0 |
 
-In short: agentaudit's bet is **offline, deterministic and explainable, with approvals that live in version control**. That is a narrower tool, not a better one for every case.
+There is also [agent-audit](https://github.com/HeadyZhang/agent-audit) (PyPI `agent-audit`, MIT), an unrelated project with a very similar name. It is broader in one direction: it analyses agent **source code** (taint tracking from tool parameters to dangerous sinks) as well as MCP configs, and it has SARIF output, a GitHub Action, a baseline mode (`--fail-on-new`) and ignore rules with a reason. Going by its README, it does not do lethal-trifecta analysis across servers, a hashed lockfile, capability diffs on pull requests, or waivers with an owner and an expiry date. Those are what this project adds, and it does not read your agent's source code. The two tools are complementary, and you can run both.
+
+In short: this project's bet is **offline, deterministic and explainable, with approvals that live in version control**. That is a narrower tool, not a better one for every case.
 
 ## Writing a rule
 
