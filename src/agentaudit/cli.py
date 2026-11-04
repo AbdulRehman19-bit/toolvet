@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -13,8 +14,13 @@ from rich.table import Table
 from rich.text import Text
 
 from agentaudit import __version__
-from agentaudit.audit import audit
+from agentaudit.audit import audit, load_servers
+from agentaudit.diff import compute_diff
+from agentaudit.diff_render import to_json as diff_json
+from agentaudit.diff_render import to_markdown as diff_markdown
+from agentaudit.diff_render import to_text as diff_text
 from agentaudit.discovery import discover
+from agentaudit.gitbase import GitError, materialize
 from agentaudit.graph import build_graph
 from agentaudit.graph_export import to_mermaid, to_svg
 from agentaudit.introspect import IntrospectError, introspect
@@ -314,3 +320,60 @@ def graph(
         console.print(f"Wrote {escape(str(output))}")
     else:
         typer.echo(text, nl=False)
+
+
+class DiffFormat(str, Enum):
+    terminal = "terminal"
+    markdown = "markdown"
+    json = "json"
+
+
+@app.command("diff")
+def diff_command(
+    path: Annotated[Path, typer.Argument(help="Repository to compare.")] = Path("."),
+    base: Annotated[str, typer.Option("--base", help="Git ref to compare against.")] = "",
+    head: Annotated[
+        str | None,
+        typer.Option("--head", help="Git ref for the new state (default: the working tree)."),
+    ] = None,
+    format: Annotated[DiffFormat, typer.Option("--format", help="Report format.")] = (
+        DiffFormat.terminal
+    ),
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write the report to a file.")
+    ] = None,
+    fail_on: Annotated[
+        Severity, typer.Option("--fail-on", help="Exit 1 if the change adds a finding this severe.")
+    ] = Severity.HIGH,
+) -> None:
+    """Show what a change does to your agent's capabilities, compared with a git ref."""
+    if not base:
+        console.print("[red]--base is required, for example --base origin/main[/]")
+        raise typer.Exit(2)
+    with tempfile.TemporaryDirectory() as tmp:
+        base_dir = Path(tmp) / "base"
+        try:
+            materialize(path, base, base_dir)
+            head_dir = path
+            if head:
+                head_dir = Path(tmp) / "head"
+                materialize(path, head, head_dir)
+        except GitError as exc:
+            console.print(f"[red]{escape(str(exc))}[/]")
+            raise typer.Exit(2) from exc
+        result = compute_diff(load_servers(base_dir), load_servers(head_dir), base_dir, head_dir)
+    if format is DiffFormat.markdown:
+        text = diff_markdown(result, fail_on)
+    elif format is DiffFormat.json:
+        text = diff_json(result, fail_on)
+    else:
+        text = diff_text(result, fail_on)
+    if output:
+        output.write_text(text, encoding="utf-8")
+        console.print(f"Wrote {escape(str(output))}")
+    elif format is DiffFormat.terminal:
+        console.print(text, markup=False, soft_wrap=True)
+    else:
+        typer.echo(text, nl=False)
+    if result.introduces_risk(fail_on):
+        raise typer.Exit(1)
