@@ -12,7 +12,10 @@ from rich.table import Table
 from agentaudit import __version__
 from agentaudit.audit import audit
 from agentaudit.discovery import discover
-from agentaudit.models import Finding, Severity
+from agentaudit.lockfile import LOCK_NAME, LockError, read_lock, write_lock
+from agentaudit.lockfile import verify as verify_lock
+from agentaudit.models import Finding, Server, Severity
+from agentaudit.snapshot import SNAPSHOT_NAME, apply_snapshot
 
 app = typer.Typer(help="Audit AI agent tool (MCP) configurations.", no_args_is_help=True)
 console = Console()
@@ -86,3 +89,56 @@ def scan(
         console.print("No findings.")
     if any(f.severity.rank >= fail_on.rank for f in findings):
         raise typer.Exit(1)
+
+
+def _project_servers(path: Path, user: bool) -> list[Server]:
+    """Servers for lock/verify: project configs plus tool snapshot, user configs opt-in."""
+    servers = discover(path, home=Path.home() if user else None)
+    snapshot = path / SNAPSHOT_NAME
+    return apply_snapshot(servers, snapshot) if snapshot.is_file() else servers
+
+
+_USER_OPTION = typer.Option(
+    "--user/--no-user", help="Include user-level client configs (off by default for CI)."
+)
+
+
+@app.command()
+def lock(
+    path: Annotated[Path, typer.Argument(help="Repository to lock.")] = Path("."),
+    user: Annotated[bool, _USER_OPTION] = False,
+) -> None:
+    """Write agent.lock with hashes of every server and, if known, every tool."""
+    servers = _project_servers(path, user)
+    if not servers:
+        console.print("No MCP servers found; nothing to lock.")
+        raise typer.Exit(1)
+    write_lock(path / LOCK_NAME, servers)
+    with_tools = sum(1 for s in servers if s.tools)
+    console.print(f"Locked {len(servers)} server(s) ({with_tools} with tool definitions).")
+    if with_tools < len(servers):
+        console.print(
+            f"[yellow]Tool descriptions are not pinned for {len(servers) - with_tools} server(s);"
+            " run `agentaudit snapshot --introspect` first to pin them.[/]"
+        )
+
+
+@app.command()
+def verify(
+    path: Annotated[Path, typer.Argument(help="Repository to verify.")] = Path("."),
+    user: Annotated[bool, _USER_OPTION] = False,
+) -> None:
+    """Compare the current setup with agent.lock; exit 1 on any drift."""
+    try:
+        approved = read_lock(path / LOCK_NAME)
+    except LockError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(2) from exc
+    drift = verify_lock(approved, _project_servers(path, user))
+    if not drift:
+        console.print("No drift: everything matches agent.lock.")
+        return
+    console.print(f"[red]{len(drift)} change(s) since agent.lock was written:[/]")
+    for item in drift:
+        console.print(f"  - {item}", markup=False)
+    raise typer.Exit(1)

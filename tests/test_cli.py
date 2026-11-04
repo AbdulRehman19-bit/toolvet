@@ -48,3 +48,56 @@ def test_scan_with_no_servers(tmp_path):
     result = runner.invoke(app, ["scan", str(tmp_path), "--no-user"])
     assert result.exit_code == 0
     assert "No MCP servers found" in result.output
+
+
+def _repo(tmp_path, args='["server.js"]'):
+    (tmp_path / ".mcp.json").write_text(
+        '{"mcpServers": {"ok": {"command": "node", "args": ' + args + "}}}", encoding="utf-8"
+    )
+
+
+def test_lock_then_verify_clean(tmp_path):
+    _repo(tmp_path)
+    result = runner.invoke(app, ["lock", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "Locked 1 server" in result.output
+    assert "not pinned" in result.output
+    assert (tmp_path / "agent.lock").is_file()
+    result = runner.invoke(app, ["verify", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "No drift" in result.output
+
+
+def test_verify_fails_on_drift(tmp_path):
+    _repo(tmp_path)
+    runner.invoke(app, ["lock", str(tmp_path)])
+    _repo(tmp_path, args='["evil.js"]')
+    result = runner.invoke(app, ["verify", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "config changed" in result.output
+
+
+def test_verify_without_lockfile_exits_2(tmp_path):
+    _repo(tmp_path)
+    result = runner.invoke(app, ["verify", str(tmp_path)])
+    assert result.exit_code == 2
+    assert "cannot read" in result.output
+
+
+def test_lock_with_no_servers_fails(tmp_path):
+    result = runner.invoke(app, ["lock", str(tmp_path)])
+    assert result.exit_code == 1
+
+
+def test_tool_snapshot_is_pinned_and_rug_pull_detected(tmp_path):
+    from agentaudit.models import Tool
+    from agentaudit.snapshot import write_snapshot
+
+    _repo(tmp_path)
+    write_snapshot(tmp_path / "agent.tools.json", {"mcp:ok": [Tool(name="t", description="safe")]})
+    result = runner.invoke(app, ["lock", str(tmp_path)])
+    assert "1 with tool definitions" in result.output
+    write_snapshot(tmp_path / "agent.tools.json", {"mcp:ok": [Tool(name="t", description="evil")]})
+    result = runner.invoke(app, ["verify", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "tool changed" in result.output
