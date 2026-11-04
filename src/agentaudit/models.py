@@ -56,3 +56,5 @@ class Finding(BaseModel):
     tool: str | None = None
     source: Path | None = None
     evidence: list[str] = Field(default_factory=list)
+    # Heuristic findings (such as the ML classifier) are shown but never fail CI.
+    advisory: bool = False

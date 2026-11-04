@@ -49,6 +49,11 @@ def main(
     """agentaudit: find dangerous tool combinations and pin what was approved."""
 
 
+def _fails(findings: list[Finding], fail_on: Severity) -> bool:
+    """True if a non-advisory finding is at least `fail_on`. Advisory findings never fail."""
+    return any(not f.advisory and f.severity.rank >= fail_on.rank for f in findings)
+
+
 def _findings_table(findings: list[Finding]) -> Table:
     table = Table(title=f"{len(findings)} finding(s)")
     for column in ("Severity", "Rule", "Server", "Message"):
@@ -60,7 +65,8 @@ def _findings_table(findings: list[Finding]) -> Table:
         message = f.message
         if f.rule_id == "AA100":
             message += "\n" + "\n".join(f"  {line}" for line in f.evidence)
-        table.add_row(f"[{style}]{f.severity.value}[/]", f.rule_id, where, message)
+        label = f"{f.severity.value} (advisory)" if f.advisory else f.severity.value
+        table.add_row(f"[{style}]{label}[/]", f.rule_id, where, message)
     return table
 
 
@@ -117,7 +123,7 @@ def scan(
     if format is not ReportFormat.terminal:
         findings = audit(servers)
         _emit(_render(format, servers, findings, path, fail_on), output)
-        if any(f.severity.rank >= fail_on.rank for f in findings):
+        if _fails(findings, fail_on):
             raise typer.Exit(1)
         return
     if not servers:
@@ -136,7 +142,7 @@ def scan(
         console.print(_findings_table(findings))
     else:
         console.print("No findings.")
-    if any(f.severity.rank >= fail_on.rank for f in findings):
+    if _fails(findings, fail_on):
         raise typer.Exit(1)
 
 

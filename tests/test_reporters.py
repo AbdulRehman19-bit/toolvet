@@ -119,3 +119,18 @@ def test_scan_uses_tool_snapshot_for_description_rules(tmp_path):
     result = runner.invoke(app, ["scan", str(tmp_path), "--no-user", "--format", "json"])
     assert result.exit_code == 1
     assert "AA006" in {f["rule"] for f in json.loads(result.output)["findings"]}
+
+
+def test_advisory_findings_never_fail_scan_or_badge():
+    from agentaudit.cli import _fails
+
+    advisory = Finding(
+        rule_id="ML001", severity=Severity.CRITICAL, message="m", server="s", advisory=True
+    )
+    hard = Finding(rule_id="AA001", severity=Severity.HIGH, message="m", server="s")
+    assert not _fails([advisory], Severity.LOW)
+    assert _fails([advisory, hard], Severity.HIGH)
+    assert "low-risk" in to_badge([advisory])
+    sarif = json.loads(to_sarif([advisory], ROOT))
+    assert sarif["runs"][0]["results"][0]["level"] == "note"
+    assert json.loads(to_json([], [advisory], ROOT))["findings"][0]["advisory"] is True
