@@ -3,6 +3,13 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-11-04
+
+### Added
+- `diff`: compares MCP configs at a git ref (`--base`, optional `--head`, default the working tree) and reports what a change does to capabilities: servers added, removed or changed, capabilities gained or lost, tool description changes, findings introduced or resolved, and trifectas created, widened or resolved. Exits 1 if the change adds a finding at or above `--fail-on` or creates or widens a trifecta. Reads from git without checking anything out or running anything.
+- The GitHub Action runs `diff` on pull requests, writes the report to the job summary and keeps a single comment up to date (new inputs `diff` and `comment`).
+- Pull request comments are safe against hostile input: server names, tool descriptions and arguments are rendered only inside code spans or blocks, and credential-looking arguments are masked.
+
 ## [0.3.0] - 2026-11-04
 
 ### Added

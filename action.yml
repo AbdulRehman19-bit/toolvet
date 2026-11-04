@@ -24,6 +24,12 @@ inputs:
   upload-sarif:
     description: Upload the SARIF report to GitHub code scanning (needs security-events write).
     default: "false"
+  diff:
+    description: On pull requests, compare MCP configs with the base and report what changed in capabilities.
+    default: "true"
+  comment:
+    description: Post the diff as one pull request comment, updated in place (needs pull-requests write; the job summary is always written).
+    default: "true"
 
 outputs:
   sarif-file:
@@ -82,17 +88,64 @@ runs:
           echo "code=0" >> "$GITHUB_OUTPUT"
         fi
 
+    - name: Diff against the pull request base
+      id: diff
+      if: always() && inputs.diff == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        set +e
+        git -C "$INPUT_PATH" fetch --no-tags --depth=1 origin "$BASE_SHA"
+        agentaudit diff "$INPUT_PATH" --base "$BASE_SHA" --format markdown \
+          --output agentaudit-diff.md --fail-on "$FAIL_ON"
+        code=$?
+        echo "code=$code" >> "$GITHUB_OUTPUT"
+        if [ -f agentaudit-diff.md ]; then
+          cat agentaudit-diff.md >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "agentaudit diff could not run (exit $code); see the log above." >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Comment on the pull request
+      if: always() && steps.diff.outcome != 'skipped' && inputs.comment == 'true'
+      uses: actions/github-script@v7
+      continue-on-error: true
+      with:
+        script: |
+          const fs = require('fs');
+          if (!fs.existsSync('agentaudit-diff.md')) return;
+          const body = fs.readFileSync('agentaudit-diff.md', 'utf8');
+          const marker = '<!-- agentaudit-diff -->';
+          const { owner, repo } = context.repo;
+          const issue_number = context.payload.pull_request.number;
+          const comments = await github.paginate(github.rest.issues.listComments, {
+            owner, repo, issue_number,
+          });
+          const existing = comments.find(
+            (c) => c.user && c.user.type === 'Bot' && c.body && c.body.startsWith(marker)
+          );
+          if (existing) {
+            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+          } else if (!body.includes('No capability changes')) {
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }
+
     - name: Fail on findings or drift
       if: always()
       shell: bash
       env:
         SCAN_CODE: ${{ steps.scan.outputs.code }}
         VERIFY_CODE: ${{ steps.verify.outputs.code }}
+        DIFF_CODE: ${{ steps.diff.outputs.code }}
       run: |
         fail=0
         [ "${SCAN_CODE:-1}" != "0" ] && fail=1
         [ "${VERIFY_CODE:-0}" != "0" ] && fail=1
+        [ "${DIFF_CODE:-0}" != "0" ] && fail=1
         if [ "$fail" = "1" ]; then
-          echo "agentaudit failed: scan exit ${SCAN_CODE:-unknown}, verify exit ${VERIFY_CODE:-skipped}"
+          echo "agentaudit failed: scan exit ${SCAN_CODE:-unknown}, verify exit ${VERIFY_CODE:-skipped}, diff exit ${DIFF_CODE:-skipped}"
           exit 1
         fi
