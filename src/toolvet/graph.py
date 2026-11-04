@@ -68,9 +68,7 @@ def find_trifectas(servers: list[Server]) -> list[Finding]:
     sources = [n for n, d in graph.nodes(data=True) if d["capability"] == "untrusted_source"]
     sinks = [n for n, d in graph.nodes(data=True) if d["capability"] == "sink"]
     for source in sources:
-        for sink in sinks:
-            if source == sink:
-                continue
+        for sink in sinks:  # a node has one capability, so a source is never also a sink
             for path in nx.all_simple_paths(graph, source, sink, cutoff=2):
                 if len(path) == 3:
                     by_scope[graph.nodes[source]["scope"]].append(path)
