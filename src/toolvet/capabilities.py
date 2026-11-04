@@ -10,6 +10,7 @@ from toolvet.launch import effective
 from toolvet.models import Capability, Server
 
 S, P, K = Capability.UNTRUSTED_SOURCE, Capability.PRIVATE_DATA, Capability.SINK
+_ORDER = (S, P, K)
 
 # keyword -> capabilities it implies. Keywords match whole tokens of the server's
 # name, command, arguments, URL host and tool names ("mcp-server-fetch" -> fetch).
@@ -124,6 +125,8 @@ def tag_server(server: Server) -> dict[Capability, str]:
     """Map each capability the server has to the first keyword that implies it."""
     tags: dict[Capability, str] = {}
     for token in _tokens(server):
-        for capability in KEYWORDS.get(token, ()):
+        # A frozenset iterates in an order that changes with Python's per-process hash seed.
+        # Sorting keeps every report identical from one run to the next.
+        for capability in sorted(KEYWORDS.get(token, ()), key=_ORDER.index):
             tags.setdefault(capability, token)
     return tags

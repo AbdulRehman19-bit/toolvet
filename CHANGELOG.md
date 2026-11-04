@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Versions follow
 ## [Unreleased]
 
 ### Fixed
+- Capability tags were not always listed in the same order: the order came from a `frozenset`, so it changed with Python's per-process hash seed, and the capability lists in diff reports (and the diff text) could differ between two runs on the same input. They are now always in the same order (untrusted source, private data, sink), and tests check output across several hash seeds.
 - Pull request comments no longer single out one server when several would do. If any one of the added servers would break a new trifecta, the first suggestion now says "Drop or move any one of the servers this change adds (a, b, c)", where it used to name only the alphabetically first. JSON output gains `drop_alternatives`. When none of the smallest sets can be moved elsewhere, the suggestion says so.
 
 ## [0.7.0] - 2026-11-04
